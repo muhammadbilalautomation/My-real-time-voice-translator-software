@@ -1,5 +1,13 @@
 # مسلسل ترجمے کا تجربہ
 
+## تازہ آواز کی اصلاح
+
+صارف نے direct Live audio میں کبھی مردانہ، کبھی زنانہ اور کبھی دوسری زبان کی آواز بتائی۔ اب direct modelTurn audio مکمل نظرانداز ہوتی ہے۔ صرف translated text کے مکمل جملے/طویل جملوں کے حصے ایک ہی Puck male TTS voice میں بن کر چلتے ہیں۔ light-to-medium pitch، قدرتی young-adult male انداز style metadata میں ہے؛ عین 19 سال کی آواز یا انسانی perception کی ضمانت نہیں۔ کوئی gender/voice fallback نہیں؛ synthesis ناکام ہو تو error کے ساتھ سیشن رکتا ہے۔
+
+آواز کا TTS بھی streaming ہے تاکہ مکمل WAV کا انتظار نہ ہو۔ دو محدود synthesis workers کے باوجود playback اصل ترتیب میں ہے؛ Stop/Mute کے بعد late audio خارج ہوتی ہے، native audio fallback نہیں۔ اس اضافی مرحلے سے تاخیر اور free TTS درخواستوں کی تعداد بڑھتی ہے۔ پرانے direct-audio کے 3.91s/4.15s نتائج موجودہ مستقل آواز کی رفتار نہیں ہیں۔ نئے synthetic test میں 7.64s Urdu source کی پہلی fixed-voice audio 6.47s پر ملی؛ تیسرے حصے پر HTTP429 آیا، اس لیے یہ پورے سیشن کی کامیابی نہیں۔ بعد کی چھوٹی quota probe کامیاب ہوئی؛ حد transient ہو سکتی ہے مگر meeting-length استعمال ابھی ثابت نہیں۔ paid upgrade فعال نہیں۔
+
+29 offline tests میں direct native audio کو کبھی playback نہ کرنا، ہر TTS job میں ایک ہی voice ID، decimal/word boundaries اور Stop کے بعد late append روکنا شامل ہیں۔ حقیقی سماعت اور acceptable latency کی صارف کی تصدیق باقی ہے۔
+
 `Start-Live-Demo.cmd` کو File Explorer میں double-click کریں۔ یہ الگ تجرباتی ونڈو ہے؛ Zoom/Meet کی settings ابھی نہ بدلیں۔
 
 1. اردو بولنے کے لیے `Urdu → English` منتخب رکھیں۔

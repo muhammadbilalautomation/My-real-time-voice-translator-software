@@ -1,15 +1,70 @@
 """Offline streaming safety tests; no real microphone, playback or API calls."""
 import tkinter as tk
+import asyncio
+import base64
+import json
+import time
 import unittest
 from unittest.mock import patch
 
 import numpy as np
 from gemini_client import ServiceError
-from live_audio import LiveSession, PlaybackBuffer, Resampler, live_setup
+from live_audio import DEFAULT_VOICE, LiveSession, PlaybackBuffer, Resampler, TextChunker, live_setup
 from live_demo import LiveDemo
 
 
 class StreamingTests(unittest.TestCase):
+    def make_session(self):
+        with patch("live_audio.sd.query_devices", return_value={"default_samplerate": 48000}):
+            session = LiveSession(0, 1, "en", audio_enabled=True)
+        session.started = time.monotonic()
+        return session
+
+    def test_sentence_chunks_preserve_words_and_decimal_amounts(self):
+        chunker = TextChunker()
+        self.assertEqual(chunker.feed("Your proj"), [])
+        self.assertEqual(chunker.feed("ect costs 500.50 dollars."), ["Your project costs 500.50 dollars."])
+        self.assertEqual(chunker.feed(" Done", finished=True), ["Done"])
+
+    def test_uncontrolled_native_audio_never_reaches_playback(self):
+        session = self.make_session()
+        class Socket:
+            count = 0
+            async def recv(inner):
+                inner.count += 1
+                if inner.count > 1:
+                    session.stop_event.set()
+                    return "{}"
+                return json.dumps({"serverContent": {"modelTurn": {"parts": [{"inlineData": {
+                    "data": base64.b64encode(bytes(4800)).decode(), "mimeType": "audio/pcm;rate=24000"}}]}}})
+        asyncio.run(session.receive(Socket()))
+        self.assertEqual(session.playback.frames, 0)
+
+    def test_every_speech_job_uses_same_selected_male_voice(self):
+        session = self.make_session()
+        async def scenario():
+            session.speech_jobs = asyncio.Queue()
+            session.speech_ready = asyncio.Queue()
+            session.queue_speech("Hello.")
+            session.queue_speech("The price is 500 dollars.")
+            worker = asyncio.create_task(session.synthesize())
+            first = await asyncio.wait_for(session.speech_ready.get(), 2)
+            second = await asyncio.wait_for(session.speech_ready.get(), 2)
+            for item in (first, second):
+                await asyncio.wait_for(asyncio.to_thread(item[2].get), 2)
+            session.stop()
+            worker.cancel()
+            await asyncio.gather(worker, return_exceptions=True)
+        with patch("live_audio.speak_stream", return_value=[(np.zeros((100, 1), dtype="float32"), 24000)]) as speaker:
+            asyncio.run(scenario())
+        self.assertEqual(speaker.call_count, 2)
+        self.assertTrue(all(call.kwargs["voice"] == DEFAULT_VOICE for call in speaker.call_args_list))
+
+    def test_urdu_text_cannot_be_queued_for_english_voice(self):
+        session = self.make_session()
+        with self.assertRaises(ServiceError):
+            session.queue_speech("میرا نام بلال ہے۔")
+
     def test_resampling_keeps_continuity_across_blocks(self):
         rate = 48000
         audio = (0.1 * np.sin(2 * np.pi * 440 * np.arange(rate) / rate)).astype("float32")
@@ -26,6 +81,12 @@ class StreamingTests(unittest.TestCase):
         output = np.ones((100, 1), dtype="float32")
         buffer.read(output, 100, None, None)
         self.assertFalse(output.any())
+
+    def test_disabled_buffer_rejects_late_audio_after_stop(self):
+        buffer = PlaybackBuffer(24000)
+        buffer.enable(False)
+        buffer.append(np.ones(100, dtype="float32"))
+        self.assertEqual(buffer.frames, 0)
 
     def test_backlog_fails_instead_of_silently_dropping_words(self):
         buffer = PlaybackBuffer(24000)

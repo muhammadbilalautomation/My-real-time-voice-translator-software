@@ -1,5 +1,8 @@
 """Simple continuous translation experiment, not yet connected to a meeting app."""
 import queue
+from pathlib import Path
+import subprocess
+import sys
 import tkinter as tk
 from tkinter import ttk
 
@@ -26,6 +29,8 @@ class LiveDemo(AudioTest):
                 widget.pack_forget()
         self.record_button.config(text="▶ Start Live / مسلسل شروع", command=self.start_live)
         self.stop_button.config(command=self.stop)
+        self.refresh_button = ttk.Button(self.record_button.master, text="↻ ایئربڈز کی فہرست تازہ کریں", command=self.refresh_devices)
+        self.refresh_button.pack(side="left", padx=8)
         lower = ttk.Frame(root, padding=(16, 0, 16, 10))
         lower.pack(fill="both", expand=True)
         self.direction = ttk.Combobox(lower, state="readonly", values=["Urdu → English", "English → Urdu"])
@@ -46,7 +51,7 @@ class LiveDemo(AudioTest):
         self.translation.pack(fill="both", expand=True)
         self.notice = tk.StringVar(value="یہ live experiment ہے؛ ابھی Zoom/Meet کی روٹنگ اور ہر غلطی روکنے کی تصدیق نہیں ہوئی۔")
         ttk.Label(lower, textvariable=self.notice, foreground="#a13c00", wraplength=850).pack(pady=5)
-        ttk.Label(lower, text="Start پر microphone audio Google کو جاتا ہے۔ ریکارڈنگ محفوظ نہیں ہوتی۔ Voice: Puck (male).", wraplength=850).pack()
+        ttk.Label(lower, text="Voice locked: Puck (male) — لائیو متن سے ایک ہی آواز بنتی ہے؛ کچھ اضافی تاخیر ممکن ہے۔", wraplength=850).pack()
         self.status.set("تیار ہے۔ پہلے headphones منتخب کریں، یا صرف متن کے لیے آواز کا خانہ بند رکھیں۔")
         self.poll_timer = root.after(100, self.poll)
         self.update_controls()
@@ -55,6 +60,14 @@ class LiveDemo(AudioTest):
         super().update_controls()
         if hasattr(self, "direction"):
             self.direction.config(state="readonly" if self.mode == "idle" else "disabled")
+            self.refresh_button.config(state="normal" if self.mode == "idle" else "disabled")
+
+    def refresh_devices(self):
+        if self.mode != "idle":
+            return
+        subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--hear"],
+                         cwd=str(Path(__file__).resolve().parent))
+        self.close()
 
     def headphones_selected(self):
         return any(word in self.speaker.get().lower() for word in ("headphones", "headset", "earbuds"))
@@ -131,7 +144,10 @@ class LiveDemo(AudioTest):
 
 def main():
     root = tk.Tk()
-    LiveDemo(root)
+    app = LiveDemo(root)
+    if "--hear" in sys.argv and app.headphones_selected():
+        app.hear.set(True)
+        app.change_audio()
     root.lift()
     root.attributes("-topmost", True)
     root.after(5000, lambda: root.attributes("-topmost", False))

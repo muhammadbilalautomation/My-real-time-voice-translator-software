@@ -4,6 +4,7 @@
 ایک وقت میں صرف ایک مرحلہ۔ اس کے قبولیت کے معیار مکمل اور صارف کو نتیجہ دکھانے کے بعد اگلا مرحلہ شروع ہوگا۔ ناکامی کو کامیابی ظاہر نہیں کیا جائے گا۔
 
 ## موجودہ حالت
+موجودہ اصلاح: صارف نے native live voice کے gender/language بدلنے کی شکایت کی۔ direct native audio کا پلے بیک ہٹا دیا؛ live translated text اب fixed Puck male streaming TTS سے گزرتا ہے۔ young-adult، light-to-medium pitch metadata، دو bounded workers، ordered streamed playback اور no fallback شامل۔ 29 offline tests پاس۔ synthetic full pipeline میں first audio 6.47s/7.64s source پر آئی، مگر ایک chunk HTTP429 پر ناکام ہوا؛ بعد کی چھوٹی synthesis probe کامیاب۔ یہ مستقل فری meeting capacity کا ثبوت نہیں؛ صارف کی دوبارہ سماعت اور latency/quota جانچ باقی۔ آواز کے معاملے میں native speechConfig قبول ہونا gender مستقل رہنے کا کافی ثبوت نہیں تھا۔
 مرحلہ 4 کے لیے صارف کی اپنی آواز سے دونوں سمتوں کا متن/پلے بیک اور تازہ مردانہ preset قابلِ قبول ہونے کی تصدیق مل گئی۔ مرحلہ 5 صارف کی ہدایت پر مؤخر ہے۔
 
 مرحلہ 6 جاری: live_audio.py اور live_demo.py میں حقیقی مسلسل WebSocket translation، 100ms mic blocks، Puck، text streams، mic/audio mute، Stop، bounded queues اور feedback روکنے کے لیے headphone-only audible output شامل ہیں۔ 24 offline tests کامیاب۔ دونوں سمتوں کے synthetic continuous tests میں input ختم ہونے سے پہلے audio ملا (3.91s/11.44s Urdu، 4.15s/7.48s English)۔ English→Urdu کے ایک جملے میں tense drift دیکھی گئی؛ step 6 مکمل یا meeting-ready نہیں۔ manual reviewed translation کے تمام safeguards live model پر خودبخود لاگو نہیں ہوتے۔ حقیقی headset/mic streaming کی صارف کی جانچ باقی ہے۔

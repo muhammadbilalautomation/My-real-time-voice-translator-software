@@ -18,6 +18,7 @@ BASE = "https://generativelanguage.googleapis.com/v1beta/"
 TEXT_MODEL = "gemini-3.5-flash-lite"
 TTS_MODEL = "gemini-3.8-flash-lite-tts"
 DEFAULT_VOICE = "puck"  # Male, upbeat conversational preset in Google's voice library.
+VOICE_STYLE = "One consistent young-adult male voice, light-to-medium pitch, natural relaxed conversational delivery at normal pace. Not deep or booming. No speaker changes or theatrical delivery. Recite only the exact supplied text."
 VOICE_PROFILE = Path(__file__).with_name(".voice-profile.json")
 
 # Common spoken numbers are normalized before comparing with written digits.
@@ -231,7 +232,7 @@ def speak(text, voice=DEFAULT_VOICE):
     payload = request("interactions", {
         "model": TTS_MODEL,
         "input": [{"type": "user_input", "content": [{"type": "text", "text": text,
-                   "annotations": [{"type": "speech_metadata", "style": "Natural, relaxed conversational delivery at normal pace. Avoid theatrical or exaggerated delivery."}]}]}],
+                   "annotations": [{"type": "speech_metadata", "style": VOICE_STYLE}]}]}],
         "response_format": {"type": "audio"},
         "generation_config": {"speech_config": [{"voice": voice}]},
         "store": False,
@@ -263,6 +264,43 @@ def speak(text, voice=DEFAULT_VOICE):
         output_rate = rate
         samples.append(audio)
     return np.concatenate(samples).reshape(-1, 1), output_rate
+
+
+def speak_stream(text, voice=DEFAULT_VOICE):
+    """Yield fixed-voice PCM as it arrives, without waiting for the entire WAV."""
+    key = load_key()
+    body = {"model": TTS_MODEL, "stream": True, "store": False,
+            "input": [{"type": "user_input", "content": [{"type": "text", "text": text,
+                       "annotations": [{"type": "speech_metadata", "style": VOICE_STYLE}]}]}],
+            "response_format": {"type": "audio", "mime_type": "audio/l16", "sample_rate": 24000},
+            "generation_config": {"speech_config": [{"voice": voice}]}}
+    req = urllib.request.Request(BASE + "interactions", data=json.dumps(body).encode("utf-8"),
+                                 headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+    produced = False
+    try:
+        with urllib.request.urlopen(req, timeout=45) as response:
+            for line in response:
+                if not line.startswith(b"data:"):
+                    continue
+                raw_event = line[5:].strip()
+                if not raw_event or raw_event == b"[DONE]":
+                    continue
+                event = json.loads(raw_event)
+                if event.get("event_type") == "error" or event.get("error"):
+                    raise ServiceError("مستقل آواز کا stream رک گیا؛ دوبارہ کوشش کریں۔")
+                delta = event.get("delta", {})
+                if delta.get("type") == "audio" and delta.get("data"):
+                    raw = base64.b64decode(delta["data"])
+                    audio = np.frombuffer(raw, dtype="<i2").astype("float32") / 32768
+                    if len(audio):
+                        produced = True
+                        yield audio.reshape(-1, 1), 24000
+    except urllib.error.HTTPError as error:
+        raise ServiceError(f"مستقل آواز کی درخواست HTTP {error.code} پر رک گئی؛ quota/اجازت چیک کریں۔ paid fallback بند ہے۔") from None
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise ServiceError("مستقل آواز کا انٹرنیٹ کنکشن رک گیا؛ پرانا آڈیو دوبارہ نہیں چلایا جائے گا۔") from None
+    if not produced:
+        raise ServiceError("مستقل مردانہ آواز نہیں ملی؛ دوسری آواز خودکار منتخب نہیں کی گئی۔")
 
 
 def personal_voice():

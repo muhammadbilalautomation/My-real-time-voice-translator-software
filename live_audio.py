@@ -12,9 +12,39 @@ import numpy as np
 import sounddevice as sd
 from websockets.asyncio.client import connect
 
-from gemini_client import ServiceError, load_key
+from gemini_client import DEFAULT_VOICE, ServiceError, load_key, speak_stream
 
 LIVE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+SPEECH_SLOTS = threading.BoundedSemaphore(2)
+
+
+class TextChunker:
+    """Keep partial words; send completed translated sentences to one fixed voice."""
+    def __init__(self):
+        self.pending = ""
+
+    def feed(self, text, finished=False):
+        self.pending += text
+        chunks = []
+        while True:
+            boundary = re.search(r"[!?۔؟]|(?<!\d)\.(?!\d)", self.pending)
+            if boundary is None:
+                # Long translated sentences can be spoken in clauses without
+                # changing their words. Never split grouping commas in numbers.
+                if len(self.pending.split()) >= 25:
+                    boundary = re.search(r"(?<!\d)[,،;:](?!\d)", self.pending)
+                if boundary is None:
+                    break
+            chunk = self.pending[:boundary.end()].strip()
+            self.pending = self.pending[boundary.end():]
+            if chunk:
+                chunks.append(chunk)
+        if finished and self.pending.strip():
+            chunks.append(self.pending.strip())
+            self.pending = ""
+        if len(self.pending) > 2000:
+            raise ServiceError("ترجمے میں مکمل جملے کی حد نہیں ملی؛ مزید آڈیو بنانے کے بجائے سیشن روک دیا۔")
+        return chunks
 
 
 def live_setup(target):
@@ -65,6 +95,14 @@ class PlaybackBuffer:
         self.offset = 0
         self.frames = 0
         self.lock = threading.Lock()
+        self.enabled = True
+
+    def enable(self, enabled):
+        with self.lock:
+            self.enabled = enabled
+            if not enabled:
+                self.parts.clear()
+                self.frames = self.offset = 0
 
     def clear(self):
         with self.lock:
@@ -73,6 +111,8 @@ class PlaybackBuffer:
 
     def append(self, data):
         with self.lock:
+            if not self.enabled:
+                return
             if self.frames + len(data) > self.rate * 5:
                 raise ServiceError("ترجمے کی آواز 5 سیکنڈ سے زیادہ پیچھے رہ گئی؛ پرانا آڈیو چلانے کے بجائے سیشن روک دیا۔")
             self.parts.append(data)
@@ -106,9 +146,16 @@ class LiveSession:
         self.input_rate = int(sd.query_devices(mic)["default_samplerate"])
         self.output_rate = int(sd.query_devices(output)["default_samplerate"])
         self.playback = PlaybackBuffer(self.output_rate)
+        self.playback.enable(audio_enabled)
         self.thread = None
         self.first_output = None
         self.started = None
+        self.voice_epoch = 0
+        self.speech_sequence = 0
+        self.chunker = TextChunker()
+        self.chunker_epoch = 0
+        self.speech_jobs = None
+        self.speech_ready = None
 
     def start(self):
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -116,12 +163,14 @@ class LiveSession:
 
     def stop(self):
         self.stop_event.set()
-        self.playback.clear()
+        self.playback.enable(False)
 
     def mute_audio(self, muted):
+        if muted != self.audio_muted:
+            self.voice_epoch += 1
+            self.speech_sequence = 0
         self.audio_muted = muted
-        if muted:
-            self.playback.clear()
+        self.playback.enable(not muted and not self.stop_event.is_set())
 
     def mute_mic(self, muted):
         self.mic_muted = muted
@@ -179,8 +228,12 @@ class LiveSession:
                                     blocksize=round(self.input_rate * .1), dtype="float32",
                                     latency="high", callback=self.capture):
                     self.started = time.monotonic()
+                    self.speech_jobs = asyncio.Queue(maxsize=4)
+                    self.speech_ready = asyncio.Queue(maxsize=6)
                     self.events.put(("status", "لائیو شروع ہے۔ بولیں؛ مختصر معنوی حصوں میں ترجمہ آتا رہے گا۔"))
-                    tasks = [asyncio.create_task(self.send(ws)), asyncio.create_task(self.receive(ws))]
+                    tasks = [asyncio.create_task(self.send(ws)), asyncio.create_task(self.receive(ws)),
+                             asyncio.create_task(self.synthesize()), asyncio.create_task(self.synthesize()),
+                             asyncio.create_task(self.render())]
                     try:
                         done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                         for task in done:
@@ -211,8 +264,9 @@ class LiveSession:
             if self.stop_event.is_set():
                 return
             content = message.get("serverContent", {})
-            if content.get("interrupted"):
-                self.playback.clear()
+            if self.chunker_epoch != self.voice_epoch or self.audio_muted:
+                self.chunker = TextChunker()
+                self.chunker_epoch = self.voice_epoch
             for key, event in (("inputTranscription", "original"), ("outputTranscription", "translation")):
                 text = content.get(key, {}).get("text", "")
                 if text:
@@ -222,18 +276,112 @@ class LiveSession:
                             self.playback.clear()
                             raise ServiceError("ترجمے کی زبان درست نہیں ملی؛ مزید آواز روک دی گئی۔")
                     self.events.put((event, text))
-            for part in content.get("modelTurn", {}).get("parts", []):
-                inline = part.get("inlineData", {})
-                if not inline.get("data"):
-                    continue
-                if self.first_output is None:
-                    self.first_output = time.monotonic() - self.started
-                    self.events.put(("latency", f"پہلی ترجمہ آواز: سیشن شروع ہونے سے {self.first_output:.1f}s (بولنے سے الگ پیمائش)"))
-                if self.audio_muted:
-                    continue
-                raw = base64.b64decode(inline["data"])
-                audio = np.frombuffer(raw, dtype="<i2").astype("float32") / 32768 * .8
-                count = max(1, round(len(audio) * self.output_rate / 24000))
-                data = np.interp(np.arange(count) * 24000 / self.output_rate, np.arange(len(audio)), audio).astype("float32")
-                if not self.stop_event.is_set() and not self.audio_muted:
-                    self.playback.append(data)
+                    if event == "translation" and not self.audio_muted:
+                        for chunk in self.chunker.feed(text):
+                            self.queue_speech(chunk)
+            if content.get("turnComplete") and not self.audio_muted:
+                for chunk in self.chunker.feed("", finished=True):
+                    self.queue_speech(chunk)
+            # IMPORTANT: modelTurn.inlineData is never played. Its speaker identity
+            # may vary. Only the translated text is synthesized with DEFAULT_VOICE.
+
+    def queue_speech(self, text):
+        if self.stop_event.is_set() or self.audio_muted:
+            return
+        if self.target == "en" and re.search(r"[\u0600-\u06ff]", text):
+            raise ServiceError("انگریزی آواز کے لیے اردو متن ملا؛ آواز روک دی گئی۔")
+        job = (self.voice_epoch, self.speech_sequence, text, time.monotonic())
+        try:
+            self.speech_jobs.put_nowait(job)
+        except asyncio.QueueFull:
+            raise ServiceError("مستقل مردانہ آواز بنانے کا کام پیچھے رہ گیا؛ سیشن روک دیا۔ مختصر جملوں سے دوبارہ آزمائیں۔") from None
+        self.speech_sequence += 1
+
+    async def synthesize(self):
+        while not self.stop_event.is_set():
+            epoch, sequence, text, created = await self.speech_jobs.get()
+            if epoch != self.voice_epoch or self.audio_muted:
+                continue
+            chunks = queue.Queue(maxsize=30)
+            await self.speech_ready.put((epoch, sequence, chunks, created))
+            def produce():
+                def put(item):
+                    while not self.stop_event.is_set() and epoch == self.voice_epoch and not self.audio_muted:
+                        try:
+                            chunks.put(item, timeout=.1)
+                            return True
+                        except queue.Full:
+                            pass
+                    return False
+                try:
+                    for audio, rate in speak_stream(text, voice=DEFAULT_VOICE):
+                        if not put(("audio", audio, rate)):
+                            return
+                    put(("end", None, None))
+                except ServiceError as error:
+                    put(("error", str(error), None))
+                except Exception:
+                    put(("error", "مستقل مردانہ آواز کا stream مکمل نہیں ہوا؛ سیشن روک دیا۔", None))
+            finished = threading.Event()
+            def run_producer():
+                acquired = False
+                try:
+                    while not self.stop_event.is_set() and epoch == self.voice_epoch:
+                        if SPEECH_SLOTS.acquire(timeout=.1):
+                            acquired = True
+                            produce()
+                            return
+                finally:
+                    if acquired:
+                        SPEECH_SLOTS.release()
+                    finished.set()
+            # A stopped session must not wait for an in-flight HTTPS response to
+            # finish. Late audio is discarded; at most two synthesis calls run.
+            threading.Thread(target=run_producer, daemon=True).start()
+            while not finished.is_set() and not self.stop_event.is_set():
+                await asyncio.sleep(.01)
+
+    async def render(self):
+        pending = {}
+        epoch = self.voice_epoch
+        expected = 0
+        while not self.stop_event.is_set():
+            item = await self.speech_ready.get()
+            if epoch != self.voice_epoch:
+                epoch, expected = self.voice_epoch, 0
+                pending.clear()
+            if item[0] != epoch or self.audio_muted:
+                continue
+            pending[item[1]] = item
+            if len(pending) > 4:
+                raise ServiceError("آواز کی ترتیب پیچھے رہ گئی؛ سیشن روک دیا۔")
+            while expected in pending:
+                _, _, chunks, created = pending.pop(expected)
+                expected += 1
+                while not self.stop_event.is_set() and epoch == self.voice_epoch and not self.audio_muted:
+                    if time.monotonic() - created > 20:
+                        raise ServiceError("ترجمے کی آواز بہت پرانی ہو گئی؛ پرانی بات سنانے کے بجائے سیشن روک دیا۔")
+                    try:
+                        kind, audio, rate = chunks.get_nowait()
+                    except queue.Empty:
+                        await asyncio.sleep(.01)
+                        continue
+                    if kind == "end":
+                        break
+                    if kind == "error":
+                        raise ServiceError(audio)
+                    audio = audio[:, 0] * .8
+                    count = max(1, round(len(audio) * self.output_rate / rate))
+                    samples = np.interp(np.arange(count) * rate / self.output_rate, np.arange(len(audio)), audio).astype("float32")
+                    block = round(self.output_rate * .1)
+                    for position in range(0, len(samples), block):
+                        while self.playback.frames > self.output_rate:
+                            if self.stop_event.is_set() or epoch != self.voice_epoch or self.audio_muted:
+                                break
+                            await asyncio.sleep(.02)
+                        if self.stop_event.is_set() or epoch != self.voice_epoch or self.audio_muted:
+                            break
+                        if self.first_output is None:
+                            self.first_output = time.monotonic() - self.started
+                            self.events.put(("latency", f"پہلی مستقل مردانہ آواز: سیشن کے آغاز سے {self.first_output:.1f}s"))
+                        self.playback.append(samples[position:position + block])
