@@ -46,13 +46,13 @@ class TranslatorDemo(AudioTest):
         self.speak_button.pack(side="left", padx=4)
         voice_row = ttk.Frame(panel)
         voice_row.pack(fill="x", pady=3)
-        ttk.Label(voice_row, text="English voice:").pack(side="left")
-        self.voice_choice = ttk.Combobox(voice_row, state="readonly", width=20, values=["Male AI voice", "My voice"])
+        ttk.Label(voice_row, text="Voice / آواز:").pack(side="left")
+        self.voice_choice = ttk.Combobox(voice_row, state="readonly", width=25, values=["Young male — Puck"])
         self.voice_choice.current(0)
         self.voice_choice.pack(side="left", padx=6)
         self.voice_choice.bind("<<ComboboxSelected>>", lambda event: setattr(self, "generated_audio", None))
         self.voice_button = ttk.Button(voice_row, text="Set up my voice / اپنی آواز", command=self.setup_voice)
-        self.voice_button.pack(side="left", padx=6)
+        # Personal-voice setup is deferred by the user; keep it out of the test flow.
         ttk.Label(panel, text="Original / آپ کی بات — متن کا ٹیسٹ کرنے کے لیے یہاں لکھ بھی سکتے ہیں").pack(anchor="w")
         self.original = tk.Text(panel, height=3, wrap="word", font=("Segoe UI", 12), undo=False)
         self.original.pack(fill="both", expand=True, pady=3)
@@ -61,7 +61,7 @@ class TranslatorDemo(AudioTest):
         self.output.pack(fill="both", expand=True, pady=3)
         self.issue = tk.StringVar()
         ttk.Label(panel, textvariable=self.issue, foreground="#a13c00", wraplength=850).pack(pady=3)
-        ttk.Label(panel, text="Translate sends audio/text to Google. Default: male AI voice. Personal voice needs setup.",
+        ttk.Label(panel, text="Translate sends audio/text to Google. Voice: Puck (male AI voice, not a clone).",
                   foreground="#555555", wraplength=850).pack()
         ttk.Label(panel, text="ترجمہ دبانے پر آواز/متن Google کو جاتا ہے۔ ابھی Zoom سے منسلک نہیں۔", wraplength=850).pack()
         try:

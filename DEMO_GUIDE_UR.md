@@ -2,6 +2,8 @@
 
 یہ short-utterance ڈیمو ہے، مسلسل live meeting translator ابھی نہیں۔ Zoom/Meet کو تبدیل نہ کریں؛ virtual audio driver ابھی نصب نہیں۔
 
+**تازہ فیصلہ:** صارف نے voice cloning فی الحال مؤخر کی ہے۔ عام ڈیمو میں صرف `Young male — Puck` منتخب ہے، اور cloning/setup بٹن چھپا دیے گئے ہیں۔ ابھی reference یا consent record کرنے کی ضرورت نہیں۔ نیچے cloning والا حصہ آئندہ استعمال کے لیے محفوظ ہے۔ Puck catalog میں male conversational آواز ہے؛ عمر کی عین مماثلت کی ضمانت نہیں۔
+
 رفتار کی تازہ تبدیلی: API upload کے لیے low-pass کے بعد 16kHz mono آڈیو استعمال ہوتی ہے، اصل recording برقرار رہتی ہے۔ ماڈل کا minimal thinking صراحت سے منتخب ہے۔ processing کے دوران timer اور 10s بعد slow-response اطلاع آتی ہے۔ ایک 6.2s synthetic Urdu sample کا ترجمہ 2.29s میں ملا؛ صارف کے پہلے 29.5s والے نتیجے کا سبب قطعی طور پر معلوم نہیں، اور یہ یکساں آڈیو کا A/B benchmark نہیں۔ آواز بننے کا وقت الگ ہے۔
 
 ## کھولنا اور آزمانا

@@ -4,6 +4,7 @@
 ایک وقت میں صرف ایک مرحلہ۔ اس کے قبولیت کے معیار مکمل اور صارف کو نتیجہ دکھانے کے بعد اگلا مرحلہ شروع ہوگا۔ ناکامی کو کامیابی ظاہر نہیں کیا جائے گا۔
 
 ## موجودہ حالت
+تازہ صارف فیصلہ: فی الحال voice cloning مؤخر؛ کوئی مزید نمونہ یا consent recording درکار نہیں۔ قدرتی، نسبتاً نوجوان مردانہ AI preset منتخب کرنا ہے۔ Google catalog میں Puck male/upbeat/conversational ہے؛ اسے default کیا، اسکرین سے My voice/setup ہٹا دیے۔ حقیقی 19 سالہ آواز یا مکمل قدرتی نتیجے کی ضمانت نہیں؛ صارف سماعت سے معیار بتائے گا۔ cloning backend محفوظ ہے مگر عام test UI سے دستیاب نہیں۔ مرحلہ 5 کو اس وقت requirement کے طور پر روک کر preset voice کے ساتھ اگلا کام کیا جا سکتا ہے۔
 فعال سیشن: 2026-10-23، پاکستانی وقت 10:32 پر ترجمہ ڈیمو کا کام شروع؛ صارف کا ہدف 12:30–13:00۔ API key کی موجودگی اور authentication چیک؛ key output/log/GitHub میں ظاہر نہیں کی گئی۔
 
 Voice setup کی اصل HTTP400 وجہ schema-only درخواست سے ثابت ہوئی: Google نے gemini-3.8-flash-lite-tts کو voice creation model کے طور پر رد کیا اور voice.model ہٹانے کو کہا۔ creation سے model ہٹا دیا؛ اب schema-only جواب Missing source_audio ہے، یعنی پہلے والا model rejection ختم ہے۔ حقیقی نمونوں سے voice creation ابھی تصدیق طلب ہے۔ audio24kHz میں بھیجی جاتی ہے، sequential reference/consent recording خود منتخب ہوتی ہے؛ بڑے اردو تلفظ سے English consent پڑھنے میں مدد ملتی ہے۔ اصل server error یا key ظاہر نہیں کی جاتی۔

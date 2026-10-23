@@ -17,7 +17,7 @@ import numpy as np
 BASE = "https://generativelanguage.googleapis.com/v1beta/"
 TEXT_MODEL = "gemini-3.5-flash-lite"
 TTS_MODEL = "gemini-3.8-flash-lite-tts"
-DEFAULT_VOICE = "achird"  # Confirmed male in Google's voice library.
+DEFAULT_VOICE = "puck"  # Male, upbeat conversational preset in Google's voice library.
 VOICE_PROFILE = Path(__file__).with_name(".voice-profile.json")
 
 # Common spoken numbers are normalized before comparing with written digits.
@@ -230,7 +230,8 @@ def speak(text, voice=DEFAULT_VOICE):
         raise ServiceError("سننے کے لیے ترجمہ موجود نہیں۔")
     payload = request("interactions", {
         "model": TTS_MODEL,
-        "input": [{"type": "user_input", "content": [{"type": "text", "text": text}]}],
+        "input": [{"type": "user_input", "content": [{"type": "text", "text": text,
+                   "annotations": [{"type": "speech_metadata", "style": "Natural, relaxed conversational delivery at normal pace. Avoid theatrical or exaggerated delivery."}]}]}],
         "response_format": {"type": "audio"},
         "generation_config": {"speech_config": [{"voice": voice}]},
         "store": False,
