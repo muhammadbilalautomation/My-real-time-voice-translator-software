@@ -6,6 +6,8 @@
 ## موجودہ حالت
 فعال سیشن: 2026-10-23، پاکستانی وقت 10:32 پر ترجمہ ڈیمو کا کام شروع؛ صارف کا ہدف 12:30–13:00۔ API key کی موجودگی اور authentication چیک؛ key output/log/GitHub میں ظاہر نہیں کی گئی۔
 
+Voice setup کی اصل HTTP400 وجہ schema-only درخواست سے ثابت ہوئی: Google نے gemini-3.8-flash-lite-tts کو voice creation model کے طور پر رد کیا اور voice.model ہٹانے کو کہا۔ creation سے model ہٹا دیا؛ اب schema-only جواب Missing source_audio ہے، یعنی پہلے والا model rejection ختم ہے۔ حقیقی نمونوں سے voice creation ابھی تصدیق طلب ہے۔ audio24kHz میں بھیجی جاتی ہے، sequential reference/consent recording خود منتخب ہوتی ہے؛ بڑے اردو تلفظ سے English consent پڑھنے میں مدد ملتی ہے۔ اصل server error یا key ظاہر نہیں کی جاتی۔
+
 رفتار کا مسئلہ: صارف کے screenshot میں translation 29.5s۔ upload کے لیے anti-aliased 16kHz mono تبدیلی، explicit minimal thinking اور live waiting timer شامل؛ 16 offline tests کامیاب۔ مختلف 6.2s synthetic audio پر translation 2.29s؛ پچھلے وقت کا exact cause ثابت نہیں، صارف کا دوبارہ ٹیسٹ باقی ہے۔
 
 مرحلہ 3 مکمل: موجودہ official pricing/audio/TTS docs دیکھے، accessible models چیک ہوئے۔ gemini-2.5-flash-lite نے نئے صارف کے لیے 404 دیا؛ gemini-3.5-flash-lite کامیاب۔ gemini-3.8-flash-lite-tts سے English اور Urdu synthetic speech کامیاب۔ صرف public free-tier eligible models استعمال ہوئے؛ کوئی billing account، purchase یا paid fallback فعال نہیں کیا۔ باقی account quota یا billing state صرف authentication سے معلوم نہیں ہوتی؛ پورے مہینے مفت meetings کی ضمانت نہیں۔

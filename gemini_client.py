@@ -94,6 +94,18 @@ def request(endpoint, body=None, timeout=45):
             return json.load(response)
     except urllib.error.HTTPError as error:
         # Never display the raw response, request headers, or exception URL.
+        voice_hint = ""
+        if error.code == 400 and endpoint == "voices":
+            try:
+                detail = json.load(error).get("error", {}).get("message", "").lower()
+                if "consent" in detail or "verification" in detail or "speaker" in detail:
+                    voice_hint = "رضامندی کا جملہ یا دونوں نمونوں میں ایک ہی آواز ہونے کی تصدیق نہیں ہوئی؛ ایک ہی مائیک سے دونوں دوبارہ بولیں۔"
+                elif "unknown" in detail or "field" in detail or "model" in detail:
+                    voice_hint = "آواز بنانے کی API configuration قبول نہیں ہوئی؛ یہ ایپ کی تکنیکی خرابی ہے، آپ کی غلطی نہیں۔"
+                elif "sample" in detail or "audio" in detail or "duration" in detail:
+                    voice_hint = "نمونے کی لمبائی یا آڈیو فارمیٹ قبول نہیں ہوا؛ قدرتی آواز 10–30 سیکنڈ اور رضامندی کا مکمل جملہ ریکارڈ کریں۔"
+            except (ValueError, AttributeError, TypeError):
+                pass
         messages = {
             400: "درخواست قبول نہیں ہوئی؛ آڈیو یا model configuration چیک کریں۔",
             401: "API key قبول نہیں ہوئی۔",
@@ -101,7 +113,7 @@ def request(endpoint, body=None, timeout=45):
             404: "یہ ماڈل یا سہولت اس پروجیکٹ میں دستیاب نہیں۔",
             429: "مفت quota یا رفتار کی حد آ گئی ہے۔ کچھ دیر بعد دوبارہ کوشش کریں؛ paid fallback بند ہے۔",
         }
-        raise ServiceError(f"Gemini HTTP {error.code}: " + messages.get(error.code, "سرور کا مسئلہ ہے؛ بعد میں دوبارہ کوشش کریں۔")) from None
+        raise ServiceError(f"Gemini HTTP {error.code}: " + (voice_hint or messages.get(error.code, "سرور کا مسئلہ ہے؛ بعد میں دوبارہ کوشش کریں۔"))) from None
     except (urllib.error.URLError, TimeoutError, OSError):
         raise ServiceError("Gemini سے رابطہ نہیں ہوا یا وقت ختم ہوا۔ انٹرنیٹ چیک کرکے دوبارہ کوشش کریں۔") from None
 
@@ -117,10 +129,10 @@ def wav_bytes(audio, rate):
     return buf.getvalue()
 
 
-def speech_upload(audio, rate):
+def speech_upload(audio, rate, target_rate=16000):
     """16 kHz mono speech for upload; leave the original recording untouched."""
     data = np.asarray(audio, dtype="float32").reshape(-1)
-    target = min(int(rate), 16000)
+    target = min(int(rate), target_rate)
     if target == rate or len(data) < 3:
         return data.reshape(-1, 1), int(rate)
     # Low-pass before reducing sample rate to avoid aliasing/crackling.
@@ -278,8 +290,11 @@ def replicate_voice(reference, reference_rate, consent, consent_rate):
             raise ServiceError("آواز بہت دھیمی ہے؛ نمونہ دوبارہ ریکارڈ کریں۔")
         if float(np.mean(np.abs(audio) >= 0.99)) > 0.01:
             raise ServiceError("نمونہ پھٹا ہوا ہے؛ مائیک سے دور ہوکر دوبارہ ریکارڈ کریں۔")
+    reference, reference_rate = speech_upload(reference, reference_rate, target_rate=24000)
+    consent, consent_rate = speech_upload(consent, consent_rate, target_rate=24000)
     payload = request("voices", {"store": False, "voice": {
-        "model": TTS_MODEL, "type": "replicated",
+        # Creation uses Google's default replication model, not a synthesis model.
+        "type": "replicated",
         "replicated": {
             "source_audio": {"mime_type": "audio/wav", "data": base64.b64encode(wav_bytes(reference, reference_rate)).decode("ascii")},
             "consent_audio": {"mime_type": "audio/wav", "data": base64.b64encode(wav_bytes(consent, consent_rate)).decode("ascii")},

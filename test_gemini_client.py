@@ -107,6 +107,7 @@ class SafetyTests(unittest.TestCase):
             with patch.object(client, "VOICE_PROFILE", profile), patch.object(client, "request", return_value={"key": "voicekey_offline_test_only"}) as request:
                 client.replicate_voice(sample, 24000, sample, 24000)
                 self.assertFalse(request.call_args.args[1]["store"])
+                self.assertNotIn("model", request.call_args.args[1]["voice"])
                 self.assertEqual(client.personal_voice(), "voicekey_offline_test_only")
                 saved = json.loads(profile.read_text())
                 self.assertNotIn("source_audio", saved)
