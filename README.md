@@ -4,6 +4,8 @@
 
 اب مختصر جملوں کا دو طرفہ translation demo بھی دستیاب ہے: `Start-Translator-Demo.cmd`۔ [اردو ڈیمو ہدایات](DEMO_GUIDE_UR.md) پڑھیں۔ یہ مسلسل live translator یا Zoom integration نہیں۔ API key صرف local `.env` میں رکھیں؛ source میں نہیں۔ کوئی نئی Python dependency درکار نہیں؛ REST client standard library استعمال کرتا ہے۔
 
+مسلسل ترجمے کا الگ تجربہ: `Start-Live-Demo.cmd`، [آسان Live ہدایات اور موجودہ حدود](LIVE_GUIDE_UR.md)۔ اس میں `websockets==17.3` استعمال ہوتا ہے؛ dependencies کی فائلیں اپ ڈیٹ ہیں۔ یہ ابھی accuracy اور headset testing کے مرحلے میں ہے، meeting integration نہیں۔
+
 ## مرحلہ 1 — مکمل
 
 2026-10-23 کو اس لیپ ٹاپ پر جانچ:

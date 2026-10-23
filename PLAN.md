@@ -4,6 +4,11 @@
 ایک وقت میں صرف ایک مرحلہ۔ اس کے قبولیت کے معیار مکمل اور صارف کو نتیجہ دکھانے کے بعد اگلا مرحلہ شروع ہوگا۔ ناکامی کو کامیابی ظاہر نہیں کیا جائے گا۔
 
 ## موجودہ حالت
+مرحلہ 4 کے لیے صارف کی اپنی آواز سے دونوں سمتوں کا متن/پلے بیک اور تازہ مردانہ preset قابلِ قبول ہونے کی تصدیق مل گئی۔ مرحلہ 5 صارف کی ہدایت پر مؤخر ہے۔
+
+مرحلہ 6 جاری: live_audio.py اور live_demo.py میں حقیقی مسلسل WebSocket translation، 100ms mic blocks، Puck، text streams، mic/audio mute، Stop، bounded queues اور feedback روکنے کے لیے headphone-only audible output شامل ہیں۔ 24 offline tests کامیاب۔ دونوں سمتوں کے synthetic continuous tests میں input ختم ہونے سے پہلے audio ملا (3.91s/11.44s Urdu، 4.15s/7.48s English)۔ English→Urdu کے ایک جملے میں tense drift دیکھی گئی؛ step 6 مکمل یا meeting-ready نہیں۔ manual reviewed translation کے تمام safeguards live model پر خودبخود لاگو نہیں ہوتے۔ حقیقی headset/mic streaming کی صارف کی جانچ باقی ہے۔
+
+فائنل UI کی صارف کی ضرورت: install ہونے والی local Windows app، web interface اور مقامی Python audio backend؛ ابھی یہ UI/installer نہیں بنا۔ اس کام کو stage 7 میں عمل میں لائیں گے؛ live stage کی تصدیق پہلے۔
 تازہ صارف فیصلہ: فی الحال voice cloning مؤخر؛ کوئی مزید نمونہ یا consent recording درکار نہیں۔ قدرتی، نسبتاً نوجوان مردانہ AI preset منتخب کرنا ہے۔ Google catalog میں Puck male/upbeat/conversational ہے؛ اسے default کیا، اسکرین سے My voice/setup ہٹا دیے۔ حقیقی 19 سالہ آواز یا مکمل قدرتی نتیجے کی ضمانت نہیں؛ صارف سماعت سے معیار بتائے گا۔ cloning backend محفوظ ہے مگر عام test UI سے دستیاب نہیں۔ مرحلہ 5 کو اس وقت requirement کے طور پر روک کر preset voice کے ساتھ اگلا کام کیا جا سکتا ہے۔
 فعال سیشن: 2026-10-23، پاکستانی وقت 10:32 پر ترجمہ ڈیمو کا کام شروع؛ صارف کا ہدف 12:30–13:00۔ API key کی موجودگی اور authentication چیک؛ key output/log/GitHub میں ظاہر نہیں کی گئی۔
 
