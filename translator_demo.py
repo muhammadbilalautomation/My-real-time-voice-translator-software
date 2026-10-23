@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from audio_test import AudioTest
-from gemini_client import ServiceError, load_key, personal_voice, speak, translate
+from gemini_client import DEFAULT_VOICE, ServiceError, load_key, personal_voice, speak, translate
 
 
 class TranslatorDemo(AudioTest):
@@ -47,7 +47,7 @@ class TranslatorDemo(AudioTest):
         voice_row = ttk.Frame(panel)
         voice_row.pack(fill="x", pady=3)
         ttk.Label(voice_row, text="English voice:").pack(side="left")
-        self.voice_choice = ttk.Combobox(voice_row, state="readonly", width=20, values=["Preset AI voice", "My voice"])
+        self.voice_choice = ttk.Combobox(voice_row, state="readonly", width=20, values=["Male AI voice", "My voice"])
         self.voice_choice.current(0)
         self.voice_choice.pack(side="left", padx=6)
         self.voice_choice.bind("<<ComboboxSelected>>", lambda event: setattr(self, "generated_audio", None))
@@ -61,7 +61,7 @@ class TranslatorDemo(AudioTest):
         self.output.pack(fill="both", expand=True, pady=3)
         self.issue = tk.StringVar()
         ttk.Label(panel, textvariable=self.issue, foreground="#a13c00", wraplength=850).pack(pady=3)
-        ttk.Label(panel, text="Translate sends audio/text to Google. Demo uses a preset AI voice, not your cloned voice.",
+        ttk.Label(panel, text="Translate sends audio/text to Google. Default: male AI voice. Personal voice needs setup.",
                   foreground="#555555", wraplength=850).pack()
         ttk.Label(panel, text="ترجمہ دبانے پر آواز/متن Google کو جاتا ہے۔ ابھی Zoom سے منسلک نہیں۔", wraplength=850).pack()
         try:
@@ -165,7 +165,7 @@ class TranslatorDemo(AudioTest):
             self.preview()
         else:
             text = self.translated["translation"]
-            voice = "Kore"
+            voice = DEFAULT_VOICE
             if self.languages()[1] == "English" and self.voice_choice.current() == 1:
                 voice = personal_voice()
                 if voice is None:

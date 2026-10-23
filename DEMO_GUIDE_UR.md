@@ -26,7 +26,7 @@
 
 ## اپنی آواز تیار کرنا — انسانی recording ابھی درکار ہے
 
-پہلا demo default میں Preset AI voice استعمال کرتا ہے۔ یہ آپ کی آواز کی نقل نہیں۔
+پہلا demo default میں Male AI voice استعمال کرتا ہے۔ یہ آپ کی آواز کی نقل نہیں۔
 
 `Set up my voice` کھولیں:
 
@@ -38,7 +38,7 @@
 اس کا مطلب ہے: یہ میری آواز ہے اور میں Google کو اس سے مصنوعی آواز بنانے کی اجازت دیتا ہوں۔
 
 3. صرف اپنی حقیقی آواز اور اپنی رضامندی استعمال کریں۔ بالغ مالک ہونے اور Google کو نمونے بھیجنے کا checkbox منتخب کریں، پھر Create my voice دبائیں۔ Google قبول نہ کرے تو error پر رکیں؛ کوئی paid upgrade یا persistent cloud profile fallback نہیں ہوتا۔
-4. کامیابی کے بعد setup بند کریں، Urdu → English کے لیے My voice منتخب کریں۔ پہلے سے بنائی گئی translation audio کی cache اس انتخاب پر صاف ہو جاتی ہے؛ دوبارہ Listen دبائیں۔ English → Urdu میں preset voice رہے گی۔
+4. کامیابی کے بعد setup بند کریں، Urdu → English کے لیے My voice منتخب کریں۔ پہلے سے بنائی گئی translation audio کی cache اس انتخاب پر صاف ہو جاتی ہے؛ دوبارہ Listen دبائیں۔ English → Urdu میں مردانہ AI voice رہے گی۔
 
 Google دونوں نمونے چیک کرتا ہے۔ یہ ایپ consent audio خود نہیں بناتی۔ `store=False` کے ساتھ عارضی encrypted key `.voice-profile.json` میں مقامی طور پر رہتی ہے، تقریباً 7 دن کے لیے؛ وہ Git سے خارج ہے۔ اصل reference/consent audio files محفوظ نہیں ہوتیں۔ key ختم ہو تو setup دوبارہ کرنا ہوگا۔ بالکل یکساں آواز یا غیر robotic نتیجے کی ضمانت نہیں؛ آپ سن کر معیار بتائیں گے۔
 

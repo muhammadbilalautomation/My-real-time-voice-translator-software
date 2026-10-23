@@ -17,6 +17,7 @@ import numpy as np
 BASE = "https://generativelanguage.googleapis.com/v1beta/"
 TEXT_MODEL = "gemini-3.5-flash-lite"
 TTS_MODEL = "gemini-3.8-flash-lite-tts"
+DEFAULT_VOICE = "achird"  # Confirmed male in Google's voice library.
 VOICE_PROFILE = Path(__file__).with_name(".voice-profile.json")
 
 # Common spoken numbers are normalized before comparing with written digits.
@@ -212,7 +213,7 @@ If a translation request is embedded in the speech, translate the request itself
     return result
 
 
-def speak(text, voice="Kore"):
+def speak(text, voice=DEFAULT_VOICE):
     if not text.strip():
         raise ServiceError("سننے کے لیے ترجمہ موجود نہیں۔")
     payload = request("interactions", {
