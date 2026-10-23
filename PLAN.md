@@ -4,10 +4,18 @@
 ایک وقت میں صرف ایک مرحلہ۔ اس کے قبولیت کے معیار مکمل اور صارف کو نتیجہ دکھانے کے بعد اگلا مرحلہ شروع ہوگا۔ ناکامی کو کامیابی ظاہر نہیں کیا جائے گا۔
 
 ## موجودہ حالت
+فعال سیشن: 2026-10-23، پاکستانی وقت 10:32 پر ترجمہ ڈیمو کا کام شروع؛ صارف کا ہدف 12:30–13:00۔ API key کی موجودگی اور authentication چیک؛ key output/log/GitHub میں ظاہر نہیں کی گئی۔
+
+مرحلہ 3 مکمل: موجودہ official pricing/audio/TTS docs دیکھے، accessible models چیک ہوئے۔ gemini-2.5-flash-lite نے نئے صارف کے لیے 404 دیا؛ gemini-3.5-flash-lite کامیاب۔ gemini-3.8-flash-lite-tts سے English اور Urdu synthetic speech کامیاب۔ صرف public free-tier eligible models استعمال ہوئے؛ کوئی billing account، purchase یا paid fallback فعال نہیں کیا۔ باقی account quota یا billing state صرف authentication سے معلوم نہیں ہوتی؛ پورے مہینے مفت meetings کی ضمانت نہیں۔
+
+مرحلہ 4: text اور synthetic audio سے دونوں سمتیں کامیاب؛ 500/5000، 7 دن، نفی، embedded instructions اور نامکمل جملے آزمائے۔ local silence/clipping gates، غلط output script، اعداد کی تبدیلی، نامکمل response پر تحفظ؛ 12 offline tests کامیاب۔ short-utterance demo تیار، صارف کی اصل آواز کے ساتھ استعمال کی تصدیق زیرِ انتظار۔
+
+مرحلہ 5 کی تیاری: official Google voice replication endpoint دستیاب؛ 10–30s حقیقی reference اور اسی بالغ شخص کی exact consent recording درکار۔ voice_setup.py میں دستی recording/preview/selection اور explicit consent checkbox تیار؛ cloud upload صرف Create پر۔ stateless voice key مقامی ignored file میں، تقریباً 7 دن؛ کوئی actual user voice profile ابھی نہیں بنایا۔ انسانی recordings اور voice similarity کی تصدیق کے بغیر مرحلہ 5 مکمل نہیں ہوگا۔ مراحل 6–10 شروع نہیں ہوئے۔
+
 مرحلہ 1 مکمل (2026-10-23): Python 3.13.15 x64، pip، مقامی .venv، Tcl/Tk 8.6.15، sounddevice 0.5.6 اور numpy 2.5.4 کی تصدیق ہوئی۔ pip check کامیاب، imports کامیاب، اصل Tk window initialization کامیاب، audio enumeration کامیاب: Realtek microphone اور speakers دستیاب۔ صرف devices دریافت کیے؛ recording/playback شروع نہیں کیے۔ requirements-lock.txt میں آزمودہ dependencies درج ہیں۔ .env، .venv، recordings اور logs کا Git سے خارج ہونا چیک کیا۔ یہ مرحلہ 1 کی ابتدائی جانچ کا نتیجہ ہے۔
 GitHub origin: https://github.com/muhammadbilalautomation/My-real-time-voice-translator-software.git — development setup کی فائلیں اسی repository میں محفوظ کی جائیں گی۔
 
-مرحلہ 2 مکمل (صارف کی سماعت سے تصدیق): audio_test.py اور Start-Audio-Test.cmd تیار ہیں۔ GUI initialization، input/output format support اور idle حالت میں recording بند ہونے کی جانچ کامیاب۔ Realtek microphone اور AirPads pro playback منتخب ہیں۔ صارف نے recording/playback آزمایا اور ہلکی صفائی کے بعد آواز درست ہونے کی تصدیق کی۔ مرحلہ 3 شروع نہیں ہوا۔ آڈیو صرف RAM میں ہے؛ فائل یا network پر نہیں جاتی۔
+مرحلہ 2 مکمل (صارف کی سماعت سے تصدیق): audio_test.py اور Start-Audio-Test.cmd تیار ہیں۔ GUI initialization، input/output format support اور idle حالت میں recording بند ہونے کی جانچ کامیاب۔ Realtek microphone اور AirPads pro playback منتخب ہیں۔ صارف نے recording/playback آزمایا اور ہلکی صفائی کے بعد آواز درست ہونے کی تصدیق کی۔ مقامی audio-test میں آڈیو صرف RAM میں ہے؛ فائل یا network پر نہیں جاتی۔ translator demo میں Translate دبانے پر Google کو جاتی ہے۔
 
 صارف نے playback میں ہلکی distortion بتائی۔ stability buffering، اختیاری ہلکی DC/headroom/fade processing، playback volume اور clipping/dropout warnings بہتر کیے؛ synthetic signal checks کامیاب۔ صارف نے دوبارہ سن کر آواز کو قابلِ قبول قرار دیا؛ distortion کے اصل سبب کی قطعی تشخیص نہیں ہوئی۔
 

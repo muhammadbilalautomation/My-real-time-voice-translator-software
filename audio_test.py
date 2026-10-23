@@ -37,6 +37,7 @@ class AudioTest:
         self.peak = 0.0
         self.warning = ""
         self.started = 0.0
+        self.record_limit = 10
         root.title("Voice Translator — Microphone Test / آواز کا ٹیسٹ")
         root.geometry("780x500")
         root.minsize(680, 500)
@@ -112,7 +113,7 @@ class AudioTest:
     def capture(self, data, frames, timing, status):
         if status:
             self.warning = str(status)
-        remaining = int(self.rate * 10) - self.frames
+        remaining = int(self.rate * self.record_limit) - self.frames
         if remaining > 0:
             chunk = data[:remaining].copy()
             self.chunks.append(chunk)
@@ -193,10 +194,10 @@ class AudioTest:
     def tick(self):
         if self.mode == "recording":
             self.meter["value"] = min(100, self.peak * 100)
-            self.status.set(f"اب بولیں — {self.frames / self.rate:.1f} / 10 سیکنڈ۔ {self.warning}")
-            if self.frames >= self.rate * 10:
+            self.status.set(f"اب بولیں — {self.frames / self.rate:.1f} / {self.record_limit} سیکنڈ۔ {self.warning}")
+            if self.frames >= self.rate * self.record_limit:
                 self.stop()
-            elif time.monotonic() - self.started > 12:
+            elif time.monotonic() - self.started > self.record_limit + 2:
                 self.warning = "مائیک سے مکمل آڈیو موصول نہیں ہوئی؛ دوبارہ ٹیسٹ کریں۔"
                 self.stop()
         elif self.mode == "playing":

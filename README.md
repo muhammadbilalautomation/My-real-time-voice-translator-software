@@ -1,6 +1,8 @@
 # Personal AI Live Voice Translator
 
-ذاتی Windows 11 مترجم کا مرحلہ وار پروجیکٹ۔ صرف اردو ↔ انگریزی؛ development setup اور مقامی مائیک/playback کا ٹیسٹ مکمل ہیں۔ یہ ابھی قابلِ استعمال translator نہیں ہے۔ مکمل مراحل اور قبولیت کے معیار [PLAN.md](PLAN.md) میں ہیں۔
+ذاتی Windows 11 مترجم کا مرحلہ وار پروجیکٹ۔ صرف اردو ↔ انگریزی؛ development setup اور مقامی مائیک/playback کا ٹیسٹ مکمل ہیں۔ مکمل meeting translator ابھی تیار نہیں۔ مکمل مراحل اور قبولیت کے معیار [PLAN.md](PLAN.md) میں ہیں۔
+
+اب مختصر جملوں کا دو طرفہ translation demo بھی دستیاب ہے: `Start-Translator-Demo.cmd`۔ [اردو ڈیمو ہدایات](DEMO_GUIDE_UR.md) پڑھیں۔ یہ مسلسل live translator یا Zoom integration نہیں۔ API key صرف local `.env` میں رکھیں؛ source میں نہیں۔ کوئی نئی Python dependency درکار نہیں؛ REST client standard library استعمال کرتا ہے۔
 
 ## مرحلہ 1 — مکمل
 
