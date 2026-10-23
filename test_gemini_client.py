@@ -72,6 +72,17 @@ class SafetyTests(unittest.TestCase):
         np.testing.assert_array_equal(audio, original)
         self.assertLessEqual(float(np.max(np.abs(clean))), 0.80001)
 
+    def test_upload_is_smaller_without_changing_duration_or_source(self):
+        rate = 48000
+        audio = (0.2 * np.sin(2 * np.pi * 440 * np.arange(rate) / rate)).astype("float32")[:, None]
+        original = audio.copy()
+        upload, upload_rate = client.speech_upload(audio, rate)
+        self.assertEqual(upload_rate, 16000)
+        self.assertEqual(len(upload), 16000)
+        self.assertAlmostEqual(float(np.max(np.abs(upload))), 0.2, places=2)
+        np.testing.assert_array_equal(audio, original)
+        self.assertLess(len(client.wav_bytes(upload, upload_rate)), len(client.wav_bytes(audio, rate)) / 2)
+
     def test_http_error_never_displays_key(self):
         secret = "not-a-real-key-for-offline-test"
         error = urllib.error.HTTPError("https://example.invalid/", 403, "Denied", {}, io.BytesIO(secret.encode()))

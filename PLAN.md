@@ -6,6 +6,8 @@
 ## موجودہ حالت
 فعال سیشن: 2026-10-23، پاکستانی وقت 10:32 پر ترجمہ ڈیمو کا کام شروع؛ صارف کا ہدف 12:30–13:00۔ API key کی موجودگی اور authentication چیک؛ key output/log/GitHub میں ظاہر نہیں کی گئی۔
 
+رفتار کا مسئلہ: صارف کے screenshot میں translation 29.5s۔ upload کے لیے anti-aliased 16kHz mono تبدیلی، explicit minimal thinking اور live waiting timer شامل؛ 16 offline tests کامیاب۔ مختلف 6.2s synthetic audio پر translation 2.29s؛ پچھلے وقت کا exact cause ثابت نہیں، صارف کا دوبارہ ٹیسٹ باقی ہے۔
+
 مرحلہ 3 مکمل: موجودہ official pricing/audio/TTS docs دیکھے، accessible models چیک ہوئے۔ gemini-2.5-flash-lite نے نئے صارف کے لیے 404 دیا؛ gemini-3.5-flash-lite کامیاب۔ gemini-3.8-flash-lite-tts سے English اور Urdu synthetic speech کامیاب۔ صرف public free-tier eligible models استعمال ہوئے؛ کوئی billing account، purchase یا paid fallback فعال نہیں کیا۔ باقی account quota یا billing state صرف authentication سے معلوم نہیں ہوتی؛ پورے مہینے مفت meetings کی ضمانت نہیں۔
 
 مرحلہ 4: text اور synthetic audio سے دونوں سمتیں کامیاب؛ 500/5000، 7 دن، نفی، embedded instructions اور نامکمل جملے آزمائے۔ local silence/clipping gates، غلط output script، اعداد کی تبدیلی، نامکمل response پر تحفظ؛ 12 offline tests کامیاب۔ short-utterance demo تیار، صارف کی اصل آواز کے ساتھ استعمال کی تصدیق زیرِ انتظار۔

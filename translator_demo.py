@@ -116,6 +116,8 @@ class TranslatorDemo(AudioTest):
         self.generation += 1
         generation = self.generation
         self.mode = "processing"
+        self.job_started = time.monotonic()
+        self.job_kind = kind
         self.status.set("ترجمہ ہو رہا ہے…" if kind == "translation" else "ترجمے کی آواز بن رہی ہے…")
         self.update_controls()
         def worker():
@@ -190,6 +192,11 @@ class TranslatorDemo(AudioTest):
             self.audio, self.rate = original_audio, original_rate
 
     def poll(self):
+        if self.mode == "processing":
+            elapsed = time.monotonic() - self.job_started
+            operation = "ترجمہ" if self.job_kind == "translation" else "آواز"
+            note = " انٹرنیٹ یا سرور کا جواب سست ہے؛ Stop سے روک سکتے ہیں۔" if elapsed >= 10 else ""
+            self.status.set(f"{operation} تیار ہو رہا ہے — {elapsed:.1f}s۔{note}")
         try:
             while True:
                 generation, kind, result, elapsed = self.results.get_nowait()
