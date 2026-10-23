@@ -4,8 +4,12 @@
 ایک وقت میں صرف ایک مرحلہ۔ اس کے قبولیت کے معیار مکمل اور صارف کو نتیجہ دکھانے کے بعد اگلا مرحلہ شروع ہوگا۔ ناکامی کو کامیابی ظاہر نہیں کیا جائے گا۔
 
 ## موجودہ حالت
-مرحلہ 1 مکمل (2026-10-23): Python 3.13.15 x64، pip، مقامی .venv، Tcl/Tk 8.6.15، sounddevice 0.5.6 اور numpy 2.5.4 کی تصدیق ہوئی۔ pip check کامیاب، imports کامیاب، اصل Tk window initialization کامیاب، audio enumeration کامیاب: Realtek microphone اور speakers دستیاب۔ صرف devices دریافت کیے؛ recording/playback شروع نہیں کیے۔ requirements-lock.txt میں آزمودہ dependencies درج ہیں۔ .env، .venv، recordings اور logs کا Git سے خارج ہونا چیک کیا۔ مرحلہ 2 شروع نہیں کیا۔
+مرحلہ 1 مکمل (2026-10-23): Python 3.13.15 x64، pip، مقامی .venv، Tcl/Tk 8.6.15، sounddevice 0.5.6 اور numpy 2.5.4 کی تصدیق ہوئی۔ pip check کامیاب، imports کامیاب، اصل Tk window initialization کامیاب، audio enumeration کامیاب: Realtek microphone اور speakers دستیاب۔ صرف devices دریافت کیے؛ recording/playback شروع نہیں کیے۔ requirements-lock.txt میں آزمودہ dependencies درج ہیں۔ .env، .venv، recordings اور logs کا Git سے خارج ہونا چیک کیا۔ یہ مرحلہ 1 کی ابتدائی جانچ کا نتیجہ ہے۔
 GitHub origin: https://github.com/muhammadbilalautomation/My-real-time-voice-translator-software.git — development setup کی فائلیں اسی repository میں محفوظ کی جائیں گی۔
+
+مرحلہ 2 مکمل (صارف کی سماعت سے تصدیق): audio_test.py اور Start-Audio-Test.cmd تیار ہیں۔ GUI initialization، input/output format support اور idle حالت میں recording بند ہونے کی جانچ کامیاب۔ Realtek microphone اور AirPads pro playback منتخب ہیں۔ صارف نے recording/playback آزمایا اور ہلکی صفائی کے بعد آواز درست ہونے کی تصدیق کی۔ مرحلہ 3 شروع نہیں ہوا۔ آڈیو صرف RAM میں ہے؛ فائل یا network پر نہیں جاتی۔
+
+صارف نے playback میں ہلکی distortion بتائی۔ stability buffering، اختیاری ہلکی DC/headroom/fade processing، playback volume اور clipping/dropout warnings بہتر کیے؛ synthetic signal checks کامیاب۔ صارف نے دوبارہ سن کر آواز کو قابلِ قبول قرار دیا؛ distortion کے اصل سبب کی قطعی تشخیص نہیں ہوئی۔
 
 ## 10 مراحل اور قبولیت کے معیار
 1. **Development setup:** Python 3.13 x64، pip، tkinter کی تصدیق؛ مقامی .venv؛ صرف sounddevice اور numpy؛ pip check اور imports کامیاب؛ بغیر recording کے audio devices کی فہرست؛ Git میں secrets خارج۔
