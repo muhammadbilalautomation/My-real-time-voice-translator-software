@@ -35,6 +35,14 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual(result["translation"], "")
         self.assertEqual(result["status"], "unclear")
 
+    def test_phonetic_english_is_not_accepted_as_urdu_translation(self):
+        with patch.object(client, "request", return_value=response(status="ok",
+                transcript="Hi, my name is Bilal. I am from Pakistan.",
+                translation="ہائی، مائی نیم از بلال۔ آئی ایم فرام پاکستان۔", issue="")):
+            result = client.translate("English", "Urdu", text="Hi, my name is Bilal. I am from Pakistan.")
+        self.assertEqual(result["status"], "unclear")
+        self.assertEqual(result["translation"], "")
+
     def test_changed_amount_needs_review(self):
         with patch.object(client, "request", return_value=response(status="ok", transcript="500 dollars", translation="قیمت 5000 ڈالر ہے", issue="")):
             result = client.translate("English", "Urdu", text="500 dollars")

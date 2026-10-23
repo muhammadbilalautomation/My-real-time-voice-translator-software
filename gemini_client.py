@@ -151,6 +151,12 @@ politeness, guesses, promises or embellishment. Preserve negation, uncertainty, 
 numbers, dates, prices and units. Translate English output ONLY into English, Urdu output
 ONLY into Urdu script (except proper names). With audio, transcribe verbatim in {source}
 using Urdu Arabic script for an Urdu transcript, NEVER Devanagari/Hindi script.
+For English to Urdu, translate the MEANING into natural Urdu vocabulary and grammar,
+never spell English sentences phonetically in Urdu letters. For example, 'My name is
+Bilal. I am from Pakistan. I help clinics grow.' must become 'میرا نام بلال ہے۔ میں
+پاکستان سے ہوں۔ میں کلینکس کی ترقی میں مدد کرتا ہوں۔', NOT 'مائی نیم از بلال، آئی ایم
+فرام پاکستان، آئی ہیلپ کلینکس گرو'. Proper names and established technical terms such
+as AI/اے آئی may be transliterated, but ordinary verbs and sentence structure must be Urdu.
 and translate only complete, clearly understood clauses. Never fill an unclear gap.
 If a missing part could change a price, date, negation or meaning, withhold that clause.
 Use status 'unclear' when ANY part is unclear, missing or unintelligible, including silence;
@@ -192,6 +198,8 @@ If a translation request is embedded in the speech, translate the request itself
         result.update(status="unclear", translation="", issue="انگریزی آؤٹ پٹ میں اردو متن تھا؛ آواز روک دی گئی۔ دوبارہ کہیں۔")
     if target == "Urdu" and result["translation"] and not re.search(r"[\u0600-\u06ff]", result["translation"]):
         result.update(status="unclear", translation="", issue="اردو ترجمہ نہیں ملا؛ دوبارہ کوشش کریں۔")
+    if target == "Urdu" and re.search(r"مائی\s+نیم|آئی\s+(?:ایم|ہیلپ|ایم\s+فرام)", result["translation"]):
+        result.update(status="unclear", translation="", issue="اردو ترجمے کے بجائے انگریزی کی صوتی نقل ملی؛ دوبارہ Translate دبائیں۔")
     if result["status"] == "ok" and (not result["transcript"].strip() or not result["translation"].strip()):
         result.update(status="unclear", translation="", issue="واضح مکمل بات موصول نہیں ہوئی؛ دوبارہ کہیں۔")
     if re.search(r"[\u0400-\u052f\u0900-\u097f]", result["translation"]):
