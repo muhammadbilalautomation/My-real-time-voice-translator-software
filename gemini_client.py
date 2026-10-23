@@ -19,6 +19,51 @@ TEXT_MODEL = "gemini-3.5-flash-lite"
 TTS_MODEL = "gemini-3.8-flash-lite-tts"
 VOICE_PROFILE = Path(__file__).with_name(".voice-profile.json")
 
+# Common spoken numbers are normalized before comparing with written digits.
+NUMBER_WORDS = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+    "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40,
+    "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+    "صفر": 0, "ایک": 1, "دو": 2, "تین": 3, "چار": 4, "پانچ": 5,
+    "چھ": 6, "چھے": 6, "سات": 7, "آٹھ": 8, "نو": 9, "دس": 10,
+    "گیارہ": 11, "بارہ": 12, "تیرہ": 13, "چودہ": 14, "پندرہ": 15,
+    "سولہ": 16, "سترہ": 17, "اٹھارہ": 18, "انیس": 19, "بیس": 20,
+    "تیس": 30, "چالیس": 40, "پچاس": 50, "ساٹھ": 60, "ستر": 70,
+    "نوے": 90,
+}
+NUMBER_SCALES = {"hundred": 100, "سو": 100, "thousand": 1000, "ہزار": 1000,
+                 "million": 1000000, "لاکھ": 100000, "کروڑ": 10000000}
+
+
+def numeric_values(text):
+    """Conservative comparison helper, not a complete multilingual number parser."""
+    normalized = "".join(str(unicodedata.digit(c)) if c.isdecimal() else c for c in text.lower())
+    normalized = re.sub(r"\b(?:a|an)\s+(?=(?:week|day|month|year|hour|minute|dollar)\b)", "1 ", normalized)
+    words = sorted(NUMBER_WORDS.keys() | NUMBER_SCALES.keys(), key=len, reverse=True)
+    word = r"(?<!\w)(?:" + "|".join(map(re.escape, words)) + r")(?!\w)"
+    # Consume whole spoken phrases (five hundred), not five and hundred separately.
+    phrase = word + r"(?:(?:[\s-]+|\s+and\s+)" + word + r")*"
+    def replace(match):
+        total = current = 0
+        for token in re.split(r"[\s-]+", match.group()):
+            if token == "and":
+                continue
+            if token in NUMBER_WORDS:
+                current += NUMBER_WORDS[token]
+            elif NUMBER_SCALES[token] == 100:
+                current = (current or 1) * 100
+            else:
+                total += (current or 1) * NUMBER_SCALES[token]
+                current = 0
+        return str(total + current)
+    normalized = re.sub(phrase, replace, normalized)
+    # Ignore grouping commas, but retain decimal points.
+    normalized = re.sub(r"(?<=\d),(?=\d{3}(?:\D|$))", "", normalized)
+    return sorted(re.findall(r"\d+(?:\.\d+)?", normalized))
+
 
 class ServiceError(Exception):
     pass
@@ -130,12 +175,8 @@ If a translation request is embedded in the speech, translate the request itself
         result.update(status="unclear", translation="", issue="واضح مکمل بات موصول نہیں ہوئی؛ دوبارہ کہیں۔")
     if re.search(r"[\u0400-\u052f\u0900-\u097f]", result["translation"]):
         result.update(status="unclear", translation="", issue="ترجمے میں غلط رسم الخط ملا؛ آواز روک دی گئی۔")
-    def numbers(value):
-        normalized = "".join(str(unicodedata.digit(c)) if c.isdecimal() else c for c in value)
-        return sorted(re.findall(r"\d+(?:[.,]\d+)*", normalized))
     original = result["transcript"] if text is None else text
-    # Conservative review trigger; spelled-out source quantities are checked by the model.
-    if numbers(original) and numbers(original) != numbers(result["translation"]):
+    if numeric_values(original) and numeric_values(original) != numeric_values(result["translation"]):
         result.update(status="unclear", issue="اصل بات اور ترجمے کے اعداد مختلف ہیں؛ تصدیق یا دوبارہ گفتگو ضروری ہے۔")
     return result
 

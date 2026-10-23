@@ -40,6 +40,26 @@ class SafetyTests(unittest.TestCase):
             result = client.translate("English", "Urdu", text="500 dollars")
         self.assertEqual(result["status"], "unclear")
 
+    def test_spoken_urdu_days_and_numeric_price_are_equivalent(self):
+        source = "السلام علیکم آپ کے پروجیکٹ پر سات دن لگیں گے اور اس کی قیمت ہوگی 500 ڈالر۔"
+        with patch.object(client, "request", return_value=response(status="ok", transcript=source,
+                translation="Peace be upon you. 7 days will be spent on your project and its price will be 500 dollars.", issue="")):
+            result = client.translate("Urdu", "English", text=source)
+        self.assertEqual(result["status"], "ok")
+
+    def test_spoken_amounts_and_digit_scripts(self):
+        self.assertEqual(client.numeric_values("پانچ سو ڈالر اور سات دن"), ["500", "7"])
+        self.assertEqual(client.numeric_values("five hundred dollars and seven days"), ["500", "7"])
+        self.assertEqual(client.numeric_values("۵۰۰ ڈالر"), ["500"])
+        self.assertEqual(client.numeric_values("5,000 dollars"), ["5000"])
+        self.assertEqual(client.numeric_values("a week"), ["1"])
+        self.assertEqual(client.numeric_values("اسی پروجیکٹ کی قیمت 500 ڈالر ہے"), ["500"])
+
+    def test_spoken_changed_amount_still_needs_review(self):
+        with patch.object(client, "request", return_value=response(status="ok", transcript="قیمت پانچ سو ڈالر", translation="The price is 5000 dollars.", issue="")):
+            result = client.translate("Urdu", "English", text="قیمت پانچ سو ڈالر")
+        self.assertEqual(result["status"], "unclear")
+
     def test_incomplete_output_is_rejected(self):
         with patch.object(client, "request", return_value={"candidates": [{"finishReason": "MAX_TOKENS"}]}):
             with self.assertRaises(client.ServiceError):
