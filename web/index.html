@@ -48,6 +48,12 @@
    </section>
    <section id="settings-view" hidden>
     <div class="page-heading"><div><h1>ترتیبات</h1><p>اپنی Gemini key یہاں محفوظ کریں۔</p></div></div>
+    <section class="settings-card" aria-labelledby="earbuds-heading">
+     <div class="settings-title"><span class="settings-icon" aria-hidden="true">◉</span><div><h2 id="earbuds-heading">Earbuds / AirPods</h2><span class="key-status">Windows سے کنیکٹ شدہ ایئربڈز ایپ میں منتخب کریں۔</span></div></div>
+     <button id="connect-earbuds" class="secondary-button" type="button">Earbuds منتخب کریں</button>
+     <p class="settings-footnote">یہ اختیاری بٹن فہرست تازہ کرکے ایئربڈز اور ترجمے کی آواز فعال کرتا ہے۔ مائیک یا لائیو ترجمہ خود شروع نہیں ہوتا۔</p>
+     <p id="earbuds-status" class="settings-feedback" role="status" hidden></p>
+    </section>
     <section class="settings-card" aria-labelledby="key-heading">
      <div class="settings-title"><span class="settings-icon" aria-hidden="true">⌘</span><div><h2 id="key-heading">Gemini API key</h2><span id="key-status" class="key-status">جانچ ہو رہی ہے…</span></div></div>
      <form id="key-form" autocomplete="off">

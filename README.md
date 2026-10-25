@@ -1,5 +1,7 @@
 # Personal AI Live Voice Translator
 
+Settings میں اختیاری **Earbuds / AirPods → Earbuds منتخب کریں** بٹن دستیاب ہے: idle device refresh، connected AirPods/AirPads/Buds کی WASAPI-preferred selection، translated audio enable، missing-device feedback اور active-session guard۔ Windows pairing یا مائیک autostart نہیں۔ `qa/earbuds-check.js` simulated endpoints سے selection/disconnect/reconnect کو cloud calls کے بغیر آزماتا ہے۔
+
 ## لائیو خرابی کی اصلاح
 
 Bluetooth reconnect کے بعد پرانی device IDs استعمال نہیں ہوتیں: Start/voice preview سے پہلے fresh list سے منتخب نام اور host API دوبارہ ملائے جاتے ہیں۔ غائب ایئربڈز پر API یا مائیک نہیں کھلتا۔ Device/network/access/quota کی الگ واضح errors، نئے error کو پرانے message سے نہ چھپانا، اور معلوم quota پر backend-enforced countdown شامل ہیں۔ [تصدیق اور باقی حدود](RELIABILITY_CHECKS.md)۔ 47 offline tests اور browser QA پاس؛ دونوں سمتوں کے مصنوعی Google Live + fixed male TTS tests کامیاب۔ اس سے انسانی سماعت یا لمبی meeting کی قابلِ اعتماد دستیابی ثابت نہیں ہوتی۔

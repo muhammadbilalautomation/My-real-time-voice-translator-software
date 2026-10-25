@@ -59,7 +59,7 @@ async page => {
   await page.locator('#clear').click();
   state.retry_after = 60;
   state.error = 'Google quota';
-  await page.waitForFunction(() => document.querySelector('#start').disabled && document.querySelector('#test-voice').disabled);
+  await page.waitForFunction(() => document.querySelector('#start').disabled && document.querySelector('#test-voice').disabled && document.querySelector('#session-title').textContent.includes('انتظار'));
   assert((await page.locator('#session-title').textContent()).includes('انتظار'),'Quota wait not visible');
   state.retry_after = 0;
   state.error = '';

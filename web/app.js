@@ -28,7 +28,7 @@ function render(state) {
   current = state;
   const running = state.active, occupied = running || state.testing;
   const waiting = Math.max(0, Number(state.retry_after) || 0);
-  for (const id of ['mic','output','direction','refresh','test-voice','clear','api-key','save-key']) $(id).disabled = occupied || busy;
+  for (const id of ['mic','output','direction','refresh','test-voice','clear','api-key','save-key','connect-earbuds']) $(id).disabled = occupied || busy;
   $('start').hidden = occupied;
   $('start').disabled = busy || !connected || !state.key_ready || !$('mic').value || !$('output').value || waiting > 0;
   $('test-voice').disabled = occupied || busy || waiting > 0;
@@ -65,8 +65,9 @@ async function poll() {
   }
   timer = setTimeout(poll, 900);
 }
-async function devices() {
+async function devices({earbudsOnly=false} = {}) {
   const lists = await api('devices');
+  let earbudsFound = false;
   for (const [id,key] of [['mic','inputs'],['output','outputs']]) {
     const previous = $(id).selectedOptions[0]?.dataset.name;
     const items = lists[key];
@@ -79,13 +80,16 @@ async function devices() {
       $(id).append(option);
     }
     const score = d => (d.name === previous ? 100:0) + (id === 'mic' ? (/realtek/i.test(d.name) ? 20:0) : (d.headphones ? 20:0)) + (d.api === 'Windows WASAPI' ? 5:0);
-    const preferred = [...items].sort((a,b) => score(b)-score(a))[0];
+    const candidates = id === 'output' && earbudsOnly ? items.filter(d => d.headphones && /airpods?|airpads?|earbuds?|buds/i.test(d.name)) : items;
+    const preferred = [...candidates].sort((a,b) => score(b)-score(a))[0];
+    if (id === 'output' && earbudsOnly) earbudsFound = Boolean(preferred);
     if (preferred) $(id).value = String(preferred.id);
     else {const option = document.createElement('option'); option.value=''; option.textContent='کوئی ڈیوائس نہیں ملی'; $(id).append(option);}
   }
-  const headphones = $('output').selectedOptions[0]?.dataset.headphones === 'true';
+  const headphones = (!earbudsOnly || earbudsFound) && $('output').selectedOptions[0]?.dataset.headphones === 'true';
   $('output-hint').textContent = headphones ? 'ایئربڈز منتخب ہیں۔':'صرف متن — آواز کے لیے ایئربڈز منتخب کریں۔';
   await api('mute',{hear:headphones});
+  if (earbudsOnly && !earbudsFound) throw new Error('AirPods / ایئربڈز دستیاب نہیں۔ پہلے Windows سے کنیکٹ کریں، پھر Earbuds منتخب کریں دبائیں۔');
 }
 function selection() {
   const mic = $('mic').selectedOptions[0], output = $('output').selectedOptions[0];
@@ -96,11 +100,11 @@ async function action(work) {
   if (busy || closed) return;
   localError = '';
   busy = true; clearTimeout(timer);
-  for (const id of ['start','stop','mic','output','direction','refresh','test-voice','clear','mute','hear','api-key','save-key']) $(id).disabled = true;
+  for (const id of ['start','stop','mic','output','direction','refresh','test-voice','clear','mute','hear','api-key','save-key','connect-earbuds']) $(id).disabled = true;
   try {await work(); if (closed) return; current = await api('state'); connected = true; render(current);}
   catch (exception) {localError = exception.message || 'دوبارہ آزمائیں۔'; error(localError);}
   finally {busy = false; $('start').disabled = !connected || !current.key_ready || (current.retry_after || 0) > 0; $('stop').disabled = false;
-    for (const id of ['mic','output','direction','refresh','test-voice','clear','api-key','save-key']) $(id).disabled = current.active || current.testing;
+    for (const id of ['mic','output','direction','refresh','test-voice','clear','api-key','save-key','connect-earbuds']) $(id).disabled = current.active || current.testing;
     $('mute').disabled = !current.active; $('hear').disabled = current.testing;
     $('test-voice').disabled = current.active || current.testing || (current.retry_after || 0) > 0;
     if (!closed) timer = setTimeout(poll, 2200);
@@ -118,6 +122,21 @@ $('output').addEventListener('change', () => action(async () => {
 $('test-voice').addEventListener('click', () => action(() => api('test',selection())));
 $('clear').addEventListener('click', () => action(() => api('clear',{})));
 $('refresh').addEventListener('click', () => action(async () => {await api('refresh',{}); await devices();}));
+$('connect-earbuds').addEventListener('click', () => action(async () => {
+  const notice = $('earbuds-status');
+  notice.hidden=false;
+  notice.classList.remove('failure');
+  notice.textContent='ایئربڈز تلاش ہو رہے ہیں…';
+  try {
+    await api('refresh',{});
+    await devices({earbudsOnly:true});
+    notice.textContent=$('output').selectedOptions[0].dataset.name+' منتخب ہیں؛ ترجمے کی آواز فعال ہے۔';
+  } catch (exception) {
+    notice.classList.add('failure');
+    notice.textContent=exception.message;
+    throw exception;
+  }
+}));
 $('direction').addEventListener('change', () => {
   const english = $('direction').value === 'en';
   $('source-label').textContent = english ? 'URDU':'ENGLISH';

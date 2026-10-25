@@ -124,6 +124,8 @@ h1 { font-size: 27px; font-weight: 650; line-height: 1.6; margin: 0 0 2px; }
 #key-help, .settings-footnote { font-size: 12px; color: var(--muted); }
 #key-feedback { font-size: 13px; padding: 10px 14px; color: #1b6746; background: var(--green-soft); border-radius: 7px; }
 #key-feedback.failure { color: #9d3f2b; background: #fff0e9; }
+.settings-feedback { padding: 10px 14px; font-size: 13px; background: var(--green-soft); color: #1b6746; border-radius: 7px; }
+.settings-feedback.failure { background: #fff0e9; color: #9d3f2b; }
 @media (min-width: 1500px) { main { padding-inline: 48px; }.transcript-text { height: 250px; } }
 @media (max-height: 850px) and (min-width: 761px) { .topbar { height: 52px; }.page-heading { margin-block: 14px 12px; }h1 { font-size: 25px; }.meeting-note { margin-bottom: 12px; padding-block: 6px; }.setup-card { padding-block: 12px; }.section-heading { margin-bottom: 10px; }.language-row { margin-top: 10px; padding-top: 10px; }.transcript-text { height: 150px; }.setup-card, .conversation { margin-bottom: 12px; } }
 @media (max-width: 1100px) { .shell { grid-template-columns: 184px minmax(0, 1fr); }.sidebar { padding-inline: 14px; }main { padding-inline: 24px; }.headphone-chip { display: none; }.control-bar { flex-wrap: wrap; }.controls { margin-inline-start: auto; }.language-row { gap: 16px; }.nav-button { font-size: 12px; gap: 8px; } }
