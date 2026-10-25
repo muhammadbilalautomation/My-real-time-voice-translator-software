@@ -52,6 +52,11 @@ class LocalAppTests(unittest.TestCase):
     def test_dns_rebinding_host_cannot_read_app_or_token(self):
         self.assertEqual(self.call('GET', '/', Host='evil.example')[0], 403)
 
+    def test_second_launcher_cannot_bind_same_port(self):
+        with self.assertRaises(OSError):
+            other = make_server(AppState(), port=self.port)
+            other.server_close()
+
     def test_refresh_cannot_disrupt_an_active_session(self):
         self.state.active = True
         with patch('local_app.sd._terminate') as terminate:

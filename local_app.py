@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import queue
 import secrets
+import socket
 import subprocess
 import threading
 import time
@@ -19,6 +20,17 @@ from live_audio import LiveSession, Resampler
 
 ROOT = Path(__file__).resolve().parent
 PORT = 8765
+
+
+class LocalServer(ThreadingHTTPServer):
+    # On Windows SO_REUSEADDR allows two servers to accept on the SAME port,
+    # mixing app tokens and session state. Reserve it exclusively instead.
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class AppState:
@@ -278,7 +290,7 @@ def make_server(state, port=PORT):
                 self.reply(400, {'error': str(error)})
             except Exception:
                 self.reply(503, {'error': 'آڈیو ڈیوائس یا رابطہ دستیاب نہیں؛ کنکشن چیک کرکے دوبارہ آزمائیں۔'})
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    server = LocalServer(('127.0.0.1', port), Handler)
     server.daemon_threads = True
     return server
 
