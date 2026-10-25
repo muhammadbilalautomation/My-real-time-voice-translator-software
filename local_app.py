@@ -1,6 +1,7 @@
 """Loopback-only desktop web UI. No browser API keys, recordings or remote hosting."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
 from pathlib import Path
 import queue
@@ -48,6 +49,7 @@ class AppState:
         self.hear = True
         self.muted = False
         self.test_cancel = threading.Event()
+        self.next_start_at = 0.0
 
     def devices(self):
         devices, apis = sd.query_devices(), sd.query_hostapis()
@@ -82,6 +84,8 @@ class AppState:
                         self.latency = text
                     elif kind == 'status':
                         self.status = text
+                    elif kind == 'cooldown':
+                        self.next_start_at = max(self.next_start_at, time.monotonic() + float(text))
                     elif kind == 'stopped':
                         self.active = False
                         self.status = text
@@ -91,7 +95,31 @@ class AppState:
             except ServiceError:
                 key_ready = False
             return {key: getattr(self, key) for key in
-                    ('active', 'testing', 'original', 'translation', 'error', 'latency', 'status', 'hear', 'muted')} | {'key_ready': key_ready}
+                    ('active', 'testing', 'original', 'translation', 'error', 'latency', 'status', 'hear', 'muted')} | {'key_ready': key_ready, 'retry_after': max(0, math.ceil(self.next_start_at - time.monotonic()))}
+
+    def refresh_devices(self):
+        with self.lock:
+            self.require_idle()
+            if self.session and getattr(self.session, 'thread', None) and self.session.thread.is_alive():
+                raise ValueError('پچھلا سیشن بند ہو رہا ہے؛ چند سیکنڈ بعد فہرست تازہ کریں۔')
+            sd._terminate()
+            sd._initialize()
+            return self.devices()
+
+    def require_available(self):
+        if time.monotonic() < self.next_start_at:
+            raise ValueError('Google کی حد کے بعد انتظار جاری ہے؛ countdown ختم ہونے دیں۔')
+
+    @staticmethod
+    def resolve_device(devices, body, kind):
+        name, api = body.get(kind + '_name'), body.get(kind + '_api')
+        if not isinstance(name, str) or not isinstance(api, str) or not name or not api:
+            raise ValueError('ونڈو کو Ctrl+Shift+R سے تازہ کریں، پھر مائیک اور ایئربڈز منتخب کریں۔')
+        matches = [d['id'] for d in devices if d['name'] == name and d['api'] == api]
+        if len(matches) != 1:
+            label = 'مائیک' if kind == 'mic' else 'ایئربڈز / منتخب سننے کی ڈیوائس'
+            raise ValueError(label + ' اب دستیاب نہیں۔ اسے کنیکٹ کرکے فہرست تازہ کریں؛ کوئی API درخواست نہیں بھیجی گئی۔')
+        return matches[0]
 
     def validate_devices(self, body):
         devices = self.devices()
@@ -111,9 +139,15 @@ class AppState:
         with self.lock:
             self.snapshot()
             self.require_idle()
+            self.require_available()
             if body.get('target') not in ('en', 'ur'):
                 raise ValueError('صرف Urdu یا English منتخب کریں۔')
-            mic, output = self.validate_devices(body)
+            # Bluetooth reconnect can renumber endpoints. Refresh before any API
+            # connection and resolve the user's exact name/API, never a stale ID.
+            fresh = self.refresh_devices()
+            mic = self.resolve_device(fresh['inputs'], body, 'mic')
+            output = self.resolve_device(fresh['outputs'], body, 'output')
+            self.validate_devices(body | {'mic': mic, 'output': output})
             load_key()
             # Do not overlap device handles while a previous session closes.
             if self.session and self.session.thread and self.session.thread.is_alive():
@@ -162,7 +196,11 @@ class AppState:
     def test_voice(self, body):
         with self.lock:
             self.require_idle()
-            _, output = self.validate_devices(body | {'hear': True})
+            self.require_available()
+            fresh = self.refresh_devices()
+            mic = self.resolve_device(fresh['inputs'], body, 'mic')
+            output = self.resolve_device(fresh['outputs'], body, 'output')
+            self.validate_devices(body | {'mic': mic, 'output': output, 'hear': True})
             load_key()
             self.testing = True
             self.test_cancel.clear()
@@ -194,6 +232,8 @@ class AppState:
             except ServiceError as error:
                 with self.lock:
                     self.error = str(error)
+                    if error.retry_after:
+                        self.next_start_at = time.monotonic() + error.retry_after
             except Exception:
                 with self.lock:
                     self.error = 'ایئربڈز پر آواز نہیں چل سکی؛ کنکشن اور ڈیوائس منتخب کرکے دوبارہ آزمائیں۔'
@@ -298,15 +338,11 @@ def make_server(state, port=PORT):
                         state.require_idle()
                         state.original = state.translation = state.error = state.latency = ''
                 elif self.path == '/api/refresh':
+                    state.refresh_devices()
                     with state.lock:
-                        state.require_idle()
-                        if state.session and state.session.thread and state.session.thread.is_alive():
-                            raise ValueError('پچھلا سیشن بند ہو رہا ہے؛ چند سیکنڈ بعد Refresh کریں۔')
-                        # PortAudio caches Windows Bluetooth endpoints at startup.
-                        # Its lifecycle hooks refresh that cache, only with all
-                        # our streams stopped. No Windows setting is modified.
-                        sd._terminate()
-                        sd._initialize()
+                        if time.monotonic() >= state.next_start_at:
+                            state.error = ''
+                        state.status = 'فہرست تازہ ہے۔ ڈیوائس منتخب کرکے Start کریں۔'
                 elif self.path == '/api/shutdown':
                     state.stop()
                     threading.Thread(target=self.server.shutdown, daemon=True).start()

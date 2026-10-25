@@ -9,11 +9,44 @@ from unittest.mock import patch
 
 import numpy as np
 from gemini_client import ServiceError
-from live_audio import DEFAULT_VOICE, LiveSession, PlaybackBuffer, Resampler, TextChunker, live_setup
+from live_audio import DEFAULT_VOICE, LiveSession, PlaybackBuffer, Resampler, TextChunker, live_setup, explain_live_error
 from live_demo import LiveDemo
 
 
 class StreamingTests(unittest.TestCase):
+    def test_audio_device_failure_is_not_reported_as_api_quota(self):
+        import sounddevice as sd
+        error = explain_live_error(sd.PortAudioError('device unavailable'), 'audio_output')
+        self.assertIn('ایئربڈز', str(error))
+        self.assertNotIn('quota', str(error))
+
+    def test_websocket_quota_error_is_redacted_and_has_wait(self):
+        from types import SimpleNamespace
+        original = RuntimeError('SECRET-KEY-IN-URL')
+        original.rcvd = SimpleNamespace(code=1011,reason='RESOURCE_EXHAUSTED quota SECRET-KEY')
+        error = explain_live_error(original,'streaming')
+        self.assertIn('quota',str(error))
+        self.assertNotIn('SECRET',str(error))
+        self.assertGreater(error.retry_after,0)
+
+    def test_tts_quota_metadata_survives_audio_worker(self):
+        session = self.make_session()
+        async def scenario():
+            session.speech_jobs = asyncio.Queue()
+            session.speech_ready = asyncio.Queue()
+            session.queue_speech('Hello.')
+            worker = asyncio.create_task(session.synthesize())
+            item = await asyncio.wait_for(session.speech_ready.get(),2)
+            result = await asyncio.wait_for(asyncio.to_thread(item[2].get),2)
+            session.stop()
+            worker.cancel()
+            await asyncio.gather(worker,return_exceptions=True)
+            return result
+        with patch('live_audio.speak_stream',side_effect=ServiceError('Quota',retry_after=75,category='quota')):
+            kind, error, _ = asyncio.run(scenario())
+        self.assertEqual(kind,'error')
+        self.assertEqual(error.retry_after,75)
+
     def make_session(self):
         with patch("live_audio.sd.query_devices", return_value={"default_samplerate": 48000}):
             session = LiveSession(0, 1, "en", audio_enabled=True)

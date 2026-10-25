@@ -1,5 +1,9 @@
 # Personal AI Live Voice Translator
 
+## لائیو خرابی کی اصلاح
+
+Bluetooth reconnect کے بعد پرانی device IDs استعمال نہیں ہوتیں: Start/voice preview سے پہلے fresh list سے منتخب نام اور host API دوبارہ ملائے جاتے ہیں۔ غائب ایئربڈز پر API یا مائیک نہیں کھلتا۔ Device/network/access/quota کی الگ واضح errors، نئے error کو پرانے message سے نہ چھپانا، اور معلوم quota پر backend-enforced countdown شامل ہیں۔ [تصدیق اور باقی حدود](RELIABILITY_CHECKS.md)۔ 47 offline tests اور browser QA پاس؛ دونوں سمتوں کے مصنوعی Google Live + fixed male TTS tests کامیاب۔ اس سے انسانی سماعت یا لمبی meeting کی قابلِ اعتماد دستیابی ثابت نہیں ہوتی۔
+
 ## نیا مقامی انٹرفیس — v0.7
 
 UI کی تازہ صفائی: compact Urdu workspace، forest sidebar، واضح transcript panels اور الگ **ترتیبات**۔ Settings میں نئی key password field میں پیسٹ کرکے محفوظ کریں؛ خانہ Save کے بعد صاف ہوتا ہے۔ محفوظ key کبھی واپس browser میں نہیں آتی اور نہ prefill ہوتی ہے۔ `POST /api/key` existing app token/Host/Origin checks کے تحت، صرف idle حالت میں `.env` atomically بدلتا ہے؛ نقطے والی key formats قبول ہیں۔ یہ schema validation ہے، Google authentication یا quota کی ضمانت نہیں۔ 41 offline tests پاس؛ browser میں save feedback/field cleanup کے لیے simulated API اور backend میں temporary `.env` استعمال ہوئی؛ اصل key ٹیسٹ سے نہیں بدلی گئی۔

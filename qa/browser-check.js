@@ -14,6 +14,8 @@ async page => {
     let body = {};
     try {body = route.request().postDataJSON() || {};} catch (_) {}
     if(path === '/api/start') {
+      if(state.fail_start) return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:'ایئربڈز غائب ہیں'})});
+      assert(Boolean(body.mic_name && body.mic_api && body.output_name && body.output_api),'Device identity missing');
       state.active=true;
       state.original='میرا نام بلال ہے۔';
       state.translation='My name is Bilal. <img src=x onerror=alert(1)>';
@@ -45,6 +47,23 @@ async page => {
   assert(await page.locator('#translation').getAttribute('dir') === 'rtl','Urdu direction incorrect');
   await page.locator('#clear').click();
   await page.waitForFunction(() => document.querySelector('#original .empty'));
+  state.fail_start = true;
+  state.error = 'Old API failure';
+  state.status = 'NEW POLL OBSERVED';
+  await page.locator('#start').click();
+  await page.waitForFunction(() => document.querySelector('#session-status').textContent === 'NEW POLL OBSERVED');
+  assert((await page.locator('#error').textContent()).includes('ایئربڈز'),'Old API error hid new device error');
+  state.fail_start = false;
+  state.error = '';
+  state.status = 'Ready';
+  await page.locator('#clear').click();
+  state.retry_after = 60;
+  state.error = 'Google quota';
+  await page.waitForFunction(() => document.querySelector('#start').disabled && document.querySelector('#test-voice').disabled);
+  assert((await page.locator('#session-title').textContent()).includes('انتظار'),'Quota wait not visible');
+  state.retry_after = 0;
+  state.error = '';
+  await page.waitForFunction(() => !document.querySelector('#start').disabled);
   for(const size of [{width:1366,height:768},{width:390,height:844}]) {
     await page.setViewportSize(size);
     const layout = await page.evaluate(() => ({overflow:document.documentElement.scrollWidth > innerWidth,box:document.querySelector('#start').getBoundingClientRect().toJSON(),height:innerHeight}));

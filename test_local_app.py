@@ -73,6 +73,39 @@ class LocalAppTests(unittest.TestCase):
         self.state.active = True
         self.assertEqual(self.call('POST', '/api/key', {'key': 'AQ.' + 'test-only-' * 4})[0], 400)
 
+    def test_disconnected_headphones_never_start_api_or_microphone(self):
+        devices = {'inputs': [{'id': 9, 'name': 'Realtek', 'api': 'Windows WASAPI'}],
+                   'outputs': [{'id': 8, 'name': 'Speakers', 'api': 'Windows WASAPI', 'headphones': False}]}
+        body = {'mic':14,'output':12,'target':'en','hear':True,
+                'mic_name':'Realtek','mic_api':'Windows WASAPI',
+                'output_name':'Headphones (AirPads pro)','output_api':'Windows WASAPI'}
+        with patch.object(self.state, 'refresh_devices', return_value=devices), patch('local_app.LiveSession') as live:
+            status, data = self.call('POST','/api/start',body)
+        self.assertEqual(status,400)
+        self.assertIn('ایئربڈز',json.loads(data)['error'])
+        live.assert_not_called()
+
+    def test_reordered_device_ids_resolve_by_name_and_host_api(self):
+        devices = {'inputs': [{'id': 9, 'name': 'Realtek', 'api': 'Windows WASAPI'}],
+                   'outputs': [{'id': 8, 'name': 'AirPads', 'api': 'Windows WASAPI', 'headphones': True}]}
+        body = {'mic':14,'output':12,'target':'en','hear':True,
+                'mic_name':'Realtek','mic_api':'Windows WASAPI',
+                'output_name':'AirPads','output_api':'Windows WASAPI'}
+        with patch.object(self.state,'refresh_devices',return_value=devices), patch.object(self.state,'devices',return_value=devices), patch('local_app.LiveSession') as live:
+            status, _ = self.call('POST','/api/start',body)
+        self.assertEqual(status,200)
+        self.assertEqual(live.call_args.args[:2],(9,8))
+
+    def test_quota_wait_blocks_repeated_calls_before_any_device_or_api(self):
+        import time
+        self.state.next_start_at = time.monotonic() + 60
+        with patch.object(self.state,'refresh_devices') as refresh, patch('local_app.LiveSession') as live:
+            self.assertEqual(self.call('POST','/api/start',{'target':'en'})[0],400)
+            self.assertEqual(self.call('POST','/api/test',{})[0],400)
+        refresh.assert_not_called()
+        live.assert_not_called()
+        self.assertGreater(self.state.snapshot()['retry_after'],0)
+
     def test_arbitrary_files_are_not_served(self):
         for path in ('/.env', '/../.env', '/gemini_client.py', '/api/unknown'):
             self.assertEqual(self.call('GET', path)[0], 404)

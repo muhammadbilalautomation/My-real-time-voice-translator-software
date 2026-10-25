@@ -18,6 +18,38 @@ LIVE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelangu
 SPEECH_SLOTS = threading.BoundedSemaphore(2)
 
 
+def explain_live_error(error, phase):
+    """Only whitelisted diagnostics: never echo exception URLs or server secrets."""
+    if isinstance(error, ServiceError):
+        return error
+    if isinstance(error, sd.PortAudioError):
+        label = 'مائیک' if phase == 'audio_input' else 'ایئربڈز / آڈیو ڈیوائس'
+        return ServiceError(label + ' دستیاب نہیں یا رابطہ ٹوٹ گیا۔ اسے کنیکٹ کرکے فہرست تازہ کریں۔', category='device')
+    response = getattr(error, 'response', None)
+    status = getattr(response, 'status_code', None)
+    frame = getattr(error, 'rcvd', None)
+    code = getattr(frame, 'code', None)
+    reason = str(getattr(frame, 'reason', '')).lower()
+    if status == 429 or any(word in reason for word in ('quota', 'resource_exhausted', 'rate limit', 'too many requests')):
+        retry = 30
+        try:
+            retry = max(1, int(response.headers.get('Retry-After', '30'))) if response else 30
+        except (ValueError, TypeError, AttributeError):
+            pass
+        return ServiceError('Google Live کی quota / رفتار کی حد آ گئی ہے۔ کچھ دیر انتظار کریں؛ بار بار Start نہ دبائیں۔', retry_after=retry, category='quota')
+    if status in (401, 403) or any(word in reason for word in ('api key', 'permission_denied', 'unauthenticated', 'credentials')):
+        return ServiceError('Google Live نے key یا اجازت قبول نہیں کی۔ ترتیبات میں key اور اس پروجیکٹ کی Live API رسائی چیک کریں۔', category='access')
+    if status == 404 or code == 1007:
+        return ServiceError('Google Live کا ماڈل یا آڈیو configuration قبول نہیں ہوا؛ تکنیکی ترتیب چیک کرنا ہوگی۔', category='configuration')
+    if isinstance(error, (TimeoutError, OSError)):
+        return ServiceError('Google Live سے رابطہ نہیں ہوا یا جواب میں دیر ہوئی۔ انٹرنیٹ چیک کرکے دوبارہ Start کریں۔', category='network')
+    if code in (1000, 1001):
+        return ServiceError('Google Live کا سیشن ختم ہوگیا۔ نیا سیشن Start کریں؛ پرانی آواز دوبارہ نہیں چلے گی۔', category='session')
+    if code == 1011 or (isinstance(status, int) and status >= 500):
+        return ServiceError('Google Live کی طرف سے عارضی سرور خرابی آئی ہے۔ کچھ دیر بعد نیا سیشن آزمائیں۔', category='server')
+    return ServiceError('لائیو آڈیو پروسیسنگ رک گئی۔ ڈیوائسز کی فہرست تازہ کرکے نیا سیشن آزمائیں۔', category='processing')
+
+
 class TextChunker:
     """Keep partial words; send completed translated sentences to one fixed voice."""
     def __init__(self):
@@ -162,6 +194,7 @@ class LiveSession:
         self.chunker_epoch = 0
         self.speech_jobs = None
         self.speech_ready = None
+        self.phase = 'connecting'
 
     def start(self):
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -204,19 +237,21 @@ class LiveSession:
         except ServiceError as error:
             if not self.stop_event.is_set():
                 self.events.put(("error", str(error)))
+                if error.retry_after:
+                    self.events.put(('cooldown', error.retry_after))
         except Exception as error:
             if not self.stop_event.is_set():
-                code = getattr(getattr(error, "rcvd", None), "code", None)
-                message = "لائیو کنکشن ٹوٹ گیا۔ انٹرنیٹ، API اجازت یا quota چیک کرکے Start دوبارہ دبائیں۔"
-                if code == 1007:
-                    message = "لائیو model configuration قبول نہیں ہوئی؛ technical setup چیک کرنا ہوگا۔"
-                self.events.put(("error", message))
+                safe = explain_live_error(error, self.phase)
+                self.events.put(('error', str(safe)))
+                if safe.retry_after:
+                    self.events.put(('cooldown', safe.retry_after))
         finally:
             self.stop_event.set()
-            self.playback.clear()
+            self.playback.enable(False)
             self.events.put(("stopped", "سیشن بند ہے۔ پرانی آواز دوبارہ نہیں چلے گی۔"))
 
     async def connect_and_stream(self):
+        self.phase = 'connecting'
         self.events.put(("status", "Google سے مسلسل آڈیو کنکشن بن رہا ہے…"))
         async with connect(LIVE_URL, additional_headers={"x-goog-api-key": load_key()},
                            open_timeout=15, close_timeout=2, max_size=8 * 1024 * 1024) as ws:
@@ -228,12 +263,15 @@ class LiveSession:
                 return
             # Raw microphone and translated playback are separate. UI allows audible
             # output only with a selected headset to prevent a speaker feedback loop.
+            self.phase = 'audio_output'
             with sd.OutputStream(device=self.output, channels=1, samplerate=self.output_rate,
                                  dtype="float32", latency="high", callback=self.playback.read):
+                self.phase = 'audio_input'
                 with sd.InputStream(device=self.mic, channels=1, samplerate=self.input_rate,
                                     blocksize=round(self.input_rate * .1), dtype="float32",
                                     latency="high", callback=self.capture):
                     self.started = time.monotonic()
+                    self.phase = 'streaming'
                     self.speech_jobs = asyncio.Queue(maxsize=4)
                     self.speech_ready = asyncio.Queue(maxsize=6)
                     self.events.put(("status", "لائیو شروع ہے۔ بولیں؛ مختصر معنوی حصوں میں ترجمہ آتا رہے گا۔"))
@@ -325,7 +363,7 @@ class LiveSession:
                             return
                     put(("end", None, None))
                 except ServiceError as error:
-                    put(("error", str(error), None))
+                    put(("error", error, None))
                 except Exception:
                     put(("error", "مستقل مردانہ آواز کا stream مکمل نہیں ہوا؛ سیشن روک دیا۔", None))
             finished = threading.Event()
@@ -376,7 +414,7 @@ class LiveSession:
                     if kind == "end":
                         break
                     if kind == "error":
-                        raise ServiceError(audio)
+                        raise audio if isinstance(audio, ServiceError) else ServiceError(audio)
                     if converter is None:
                         converter = Resampler(rate, self.output_rate)
                     samples = converter.process(audio[:, 0] * .8)

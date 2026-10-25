@@ -71,7 +71,10 @@ def numeric_values(text):
 
 
 class ServiceError(Exception):
-    pass
+    def __init__(self, message, *, retry_after=0, category='service'):
+        super().__init__(message)
+        self.retry_after = min(86400, max(0, int(retry_after)))
+        self.category = category
 
 
 def load_key():
@@ -310,7 +313,7 @@ def speak_stream(text, voice=DEFAULT_VOICE):
                 wait = 0
             limit = "روزانہ" if "per day" in detail or "daily" in detail else "درخواستوں کی"
             hint = f" تقریباً {(wait + 3599) // 3600} گھنٹے بعد دوبارہ آزمائیں۔" if wait >= 3600 else " کچھ دیر بعد دوبارہ آزمائیں۔"
-            raise ServiceError(f"آواز بنانے کی {limit} حد پوری ہو گئی ہے (HTTP 429)۔" + hint + " کوئی paid سروس فعال نہیں کی گئی۔") from None
+            raise ServiceError(f"آواز بنانے کی {limit} حد پوری ہو گئی ہے (HTTP 429)۔" + hint + " کوئی paid سروس فعال نہیں کی گئی۔", retry_after=wait or 30, category='quota') from None
         raise ServiceError(f"مستقل آواز کی درخواست HTTP {error.code} پر رک گئی؛ quota/اجازت چیک کریں۔ paid fallback بند ہے۔") from None
     except (urllib.error.URLError, TimeoutError, OSError):
         raise ServiceError("مستقل آواز کا انٹرنیٹ کنکشن رک گیا؛ پرانا آڈیو دوبارہ نہیں چلایا جائے گا۔") from None
