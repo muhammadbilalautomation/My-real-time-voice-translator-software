@@ -27,7 +27,7 @@ function renderText(id, text) {
 function render(state) {
   current = state;
   const running = state.active, occupied = running || state.testing;
-  for (const id of ['mic','output','direction','refresh','test-voice','clear']) $(id).disabled = occupied || busy;
+  for (const id of ['mic','output','direction','refresh','test-voice','clear','api-key','save-key']) $(id).disabled = occupied || busy;
   $('start').hidden = occupied;
   $('start').disabled = busy || !connected || !state.key_ready || !$('mic').value || !$('output').value;
   $('stop').hidden = !occupied;
@@ -40,10 +40,11 @@ function render(state) {
   $('session-light').classList.toggle('on', running && !state.muted);
   $('live-badge').classList.toggle('on', running);
   $('live-badge').textContent = running ? (state.muted ? 'مائیک خاموش ہے':'لائیو ترجمہ جاری ہے'):'مائیک بند ہے';
-  $('session-title').textContent = state.testing ? 'آواز کا نمونہ':running ? (state.muted ? 'مائیک خاموش ہے':'آپ کی بات سنی جا رہی ہے'):'بات شروع کرنے کے لیے تیار';
+  $('session-title').textContent = state.testing ? 'آواز کا نمونہ':running ? (state.muted ? 'مائیک خاموش ہے':'گفتگو جاری ہے'):'شروع کرنے کے لیے تیار';
   $('session-status').textContent = state.status;
   $('provider').textContent = state.key_ready ? 'Gemini · API key محفوظ ہے':'Gemini · API key درکار ہے';
-  $('latency').textContent = state.latency || 'آواز اور ترجمہ مستقل محفوظ نہیں ہوتے';
+  $('latency').textContent = state.latency || '';
+  $('key-status').textContent = state.key_ready ? 'Key محفوظ ہے؛ نئی key پیسٹ کرنے کی ضرورت نہیں۔':'ابھی key محفوظ نہیں ہے۔';
   renderText('original',state.original); renderText('translation',state.translation);
   error(state.error || localError || (!state.key_ready ? 'API key نہیں ملی۔ project کی مقامی .env فائل چیک کریں؛ key چیٹ میں نہ بھیجیں۔':''));
 }
@@ -75,7 +76,7 @@ async function devices() {
     else {const option = document.createElement('option'); option.value=''; option.textContent='کوئی ڈیوائس نہیں ملی'; $(id).append(option);}
   }
   const headphones = $('output').selectedOptions[0]?.dataset.headphones === 'true';
-  $('output-hint').textContent = headphones ? 'ایئربڈز منتخب ہیں؛ ترجمے کی آواز یہیں آئے گی۔':'اسپیکر منتخب ہیں؛ فی الحال صرف متن۔ ایئربڈز کنیکٹ کرکے فہرست تازہ کریں۔';
+  $('output-hint').textContent = headphones ? 'ایئربڈز منتخب ہیں۔':'صرف متن — آواز کے لیے ایئربڈز منتخب کریں۔';
   await api('mute',{hear:headphones});
 }
 function selection() {return {mic:Number($('mic').value), output:Number($('output').value), target:$('direction').value, hear:$('hear').checked};}
@@ -83,11 +84,11 @@ async function action(work) {
   if (busy || closed) return;
   localError = '';
   busy = true; clearTimeout(timer);
-  for (const id of ['start','stop','mic','output','direction','refresh','test-voice','clear','mute','hear']) $(id).disabled = true;
+  for (const id of ['start','stop','mic','output','direction','refresh','test-voice','clear','mute','hear','api-key','save-key']) $(id).disabled = true;
   try {await work(); if (closed) return; current = await api('state'); connected = true; render(current);}
   catch (exception) {localError = exception.message || 'دوبارہ آزمائیں۔'; error(localError);}
   finally {busy = false; $('start').disabled = !connected || !current.key_ready; $('stop').disabled = false;
-    for (const id of ['mic','output','direction','refresh','test-voice','clear']) $(id).disabled = current.active || current.testing;
+    for (const id of ['mic','output','direction','refresh','test-voice','clear','api-key','save-key']) $(id).disabled = current.active || current.testing;
     $('mute').disabled = !current.active; $('hear').disabled = current.testing;
     if (!closed) timer = setTimeout(poll, 2200);
     else for (const item of document.querySelectorAll('button,input,select')) item.disabled=true;
@@ -112,13 +113,35 @@ $('direction').addEventListener('change', () => {
   $('original').classList.toggle('source-text',english);
 });
 for (const button of document.querySelectorAll('[data-view]')) button.addEventListener('click', () => {
-  const guide = button.dataset.view === 'guide';
-  $('guide-view').hidden = !guide; $('translator-view').hidden = guide;
-  $('page-name').textContent = guide ? 'استعمال کا طریقہ':'لائیو ترجمہ';
+  const view = button.dataset.view;
+  for (const name of ['translator','guide','settings']) $(name+'-view').hidden = name !== view;
+  $('page-name').textContent = {guide:'استعمال کا طریقہ',settings:'ترتیبات',translator:'لائیو ترجمہ'}[view];
+  if (view !== 'settings') $('api-key').value = '';
   for (const item of document.querySelectorAll('[data-view]')) {
     item.classList.toggle('selected',item === button);
     if (item === button) item.setAttribute('aria-current','page'); else item.removeAttribute('aria-current');
   }
+});
+$('key-form').addEventListener('submit', event => {
+  event.preventDefault();
+  if (busy || closed) return;
+  const key = $('api-key').value;
+  if (!key.trim()) { $('api-key').focus(); return; }
+  action(async () => {
+    const feedback = $('key-feedback');
+    feedback.hidden = false;
+    feedback.classList.remove('failure');
+    feedback.textContent = 'محفوظ ہو رہی ہے…';
+    try {
+      await api('key',{key});
+      feedback.textContent = 'Key محفوظ ہوگئی۔';
+    } catch (exception) {
+      feedback.textContent = exception.message;
+      feedback.classList.add('failure');
+    } finally {
+      $('api-key').value = '';
+    }
+  });
 });
 $('exit').addEventListener('click', () => action(async () => {
   await api('shutdown',{}); closed = true; clearTimeout(timer);

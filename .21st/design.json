@@ -1,0 +1,12 @@
+{
+  "project": "Bilal Voice Translator",
+  "framework": "Local HTML/CSS/JavaScript with Python audio backend",
+  "decisions": [
+    "Preserve emerald identity; deep forest sidebar and warm light workspace.",
+    "Prioritize devices, direction, captions and always-visible Start/Stop.",
+    "Use readable Urdu and reduce repetitive instructional text.",
+    "Keep key management in Settings and detailed help in Guide.",
+    "Keep the unfinished meeting-routing notice concise and visible."
+  ],
+  "tooling": "21st CLI unavailable; no hosted generation or external UI dependencies used."
+}

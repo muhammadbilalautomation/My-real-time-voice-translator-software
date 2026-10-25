@@ -4,9 +4,9 @@ async page => {
   const assert = (value, message) => {if (!value) throw new Error(message);};
   await page.goto('http://127.0.0.1:8765/');
   await page.waitForFunction(() => document.querySelector('#provider').textContent.includes('محفوظ'));
-  await page.getByRole('button',{name:'استعمال کا طریقہ Guide'}).click();
+  await page.locator('[data-view="guide"]').click();
   assert(await page.getByText('صرف تین آسان قدم۔').isVisible(),'Guide did not open');
-  await page.getByRole('button',{name:'لائیو ترجمہ Live'}).click();
+  await page.locator('[data-view="translator"]').click();
   const state = {active:false,testing:false,muted:false,hear:false,key_ready:true,status:'Ready',error:'',original:'',translation:'',latency:''};
   await page.route('**/api/*', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -23,6 +23,12 @@ async page => {
     if(path === '/api/clear') state.original=state.translation='';
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(path === '/api/state' ? state : {ok:true})});
   });
+  await page.locator('[data-view="settings"]').click();
+  await page.locator('#api-key').fill('AQ.test-only-placeholder-do-not-use');
+  await page.locator('#save-key').click();
+  await page.waitForFunction(() => document.querySelector('#key-feedback').textContent === 'Key محفوظ ہوگئی۔');
+  assert(await page.locator('#api-key').inputValue() === '', 'Saved secret not cleared');
+  await page.locator('[data-view="translator"]').click();
   await page.locator('#start').click();
   await page.waitForFunction(() => !document.querySelector('#stop').hidden);
   assert(await page.locator('#mic').isDisabled(),'Device changes allowed during a session');

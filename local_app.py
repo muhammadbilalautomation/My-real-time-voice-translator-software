@@ -4,12 +4,14 @@ import json
 import os
 from pathlib import Path
 import queue
+import re
 import secrets
 import socket
 import subprocess
 import threading
 import time
 import urllib.request
+import unicodedata
 import webbrowser
 
 import numpy as np
@@ -19,6 +21,7 @@ from gemini_client import ServiceError, load_key, speak_stream
 from live_audio import LiveSession, Resampler
 
 ROOT = Path(__file__).resolve().parent
+ENV_PATH = ROOT / '.env'
 PORT = 8765
 
 
@@ -125,6 +128,28 @@ class AppState:
     def require_idle(self):
         if self.active or self.testing:
             raise ValueError('پہلے موجودہ ٹیسٹ یا سیشن روکیں۔')
+
+    def save_key(self, value):
+        with self.lock:
+            self.require_idle()
+            if not isinstance(value, str) or len(value) > 500:
+                raise ValueError('مکمل API key پیسٹ کریں۔')
+            key = ''.join(c for c in value if unicodedata.category(c) != 'Cf').strip()
+            if key.startswith('GEMINI_API_KEY='):
+                key = key.partition('=')[2].strip()
+            key = key.strip('\"\'`').strip()
+            if not re.fullmatch(r'[A-Za-z0-9_.-]{20,300}', key):
+                raise ValueError('اصل API key پیسٹ کریں؛ اضافی الفاظ یا خالی جگہ شامل نہ کریں۔')
+            if os.environ.get('GEMINI_API_KEY'):
+                raise ValueError('Key ماحول کی ترتیب سے آ رہی ہے؛ اسے بدلنے کے لیے backend کی environment ترتیب اپ ڈیٹ کریں۔')
+            lines = ENV_PATH.read_text(encoding='utf-8-sig').splitlines() if ENV_PATH.exists() else []
+            lines = [line for line in lines if line.partition('=')[0].strip() != 'GEMINI_API_KEY']
+            temporary = ENV_PATH.with_name('.env.new')
+            try:
+                temporary.write_text('\n'.join(lines + ['GEMINI_API_KEY=' + key]) + '\n', encoding='utf-8')
+                os.replace(temporary, ENV_PATH)
+            finally:
+                temporary.unlink(missing_ok=True)
 
     def stop(self):
         with self.lock:
@@ -247,6 +272,8 @@ def make_server(state, port=PORT):
                     raise ValueError('درخواست درست نہیں۔')
                 if self.path == '/api/start':
                     state.start(body)
+                elif self.path == '/api/key':
+                    state.save_key(body.get('key'))
                 elif self.path == '/api/stop':
                     state.stop()
                 elif self.path == '/api/mute':

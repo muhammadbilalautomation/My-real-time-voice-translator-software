@@ -1,6 +1,8 @@
 """Local-only API safety tests; never open a microphone or contact Google."""
 import http.client
 import json
+from pathlib import Path
+import tempfile
 import threading
 import unittest
 from unittest.mock import patch
@@ -44,6 +46,32 @@ class LocalAppTests(unittest.TestCase):
         self.assertEqual(self.call('POST', '/api/start', {}, token=False)[0], 403)
         self.assertEqual(self.call('POST', '/api/start', {}, Origin='https://evil.example')[0], 403)
         self.assertIsNone(self.state.session)
+
+    def test_key_save_accepts_dot_and_clears_secret_from_response(self):
+        sample = 'AQ.' + 'test-only-placeholder-' * 2
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / '.env'
+            path.write_text('OTHER_SETTING=keep\nGEMINI_API_KEY=old-placeholder\n', encoding='utf-8')
+            with patch('local_app.ENV_PATH', path):
+                status, data = self.call('POST', '/api/key', {'key': sample})
+            self.assertEqual(status, 200)
+            self.assertNotIn(sample.encode(), data)
+            self.assertIn('OTHER_SETTING=keep', path.read_text())
+            self.assertIn('GEMINI_API_KEY=' + sample, path.read_text())
+            self.assertFalse(path.with_name('.env.new').exists())
+
+    def test_invalid_key_does_not_replace_saved_key(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / '.env'
+            path.write_text('GEMINI_API_KEY=keep-existing\n', encoding='utf-8')
+            with patch('local_app.ENV_PATH', path):
+                status, _ = self.call('POST', '/api/key', {'key': 'not a valid\nkey'})
+            self.assertEqual(status, 400)
+            self.assertEqual(path.read_text(), 'GEMINI_API_KEY=keep-existing\n')
+
+    def test_key_cannot_change_while_mic_is_live(self):
+        self.state.active = True
+        self.assertEqual(self.call('POST', '/api/key', {'key': 'AQ.' + 'test-only-' * 4})[0], 400)
 
     def test_arbitrary_files_are_not_served(self):
         for path in ('/.env', '/../.env', '/gemini_client.py', '/api/unknown'):
