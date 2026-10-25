@@ -1,5 +1,17 @@
 # Personal AI Live Voice Translator
 
+## نیا مقامی انٹرفیس — v0.7
+
+اس لیپ ٹاپ پر `Start-Voice-Translator.cmd` یا Desktop کا **Bilal Voice Translator** شارٹ کٹ کھولیں۔ الگ Edge app window میں Urdu/English، devices، Start/Stop، mic mute، audio mute، voice preview، local captions اور اردو guide دستیاب ہیں۔ [آسان استعمال اور موجودہ حدود](APP_GUIDE_UR.md)۔ اضافی package، account، server hosting یا Windows setting کی تبدیلی درکار نہیں۔ یہ existing Python environment کے ساتھ مقامی app ہے؛ دوسرے کمپیوٹر کے لیے standalone EXE installer ابھی نہیں۔
+
+Gemini Puck کی گفتگو والی metadata بہتر کی گئی اور streamed آڈیو کی resampling میں chunk continuity درست کی گئی۔ یہ انسانی سماعت میں معیار کی ضمانت نہیں۔ 2026-10-25 کی مختصر API probe نے 5.92s آڈیو 2.61s میں تیار کیا؛ یہ مکمل live round-trip latency نہیں۔
+
+**یہ مقامی MVP ہے؛ مکمل Zoom/Meet ریلیز نہیں۔** منتخب input کا ترجمہ منتخب headphones میں آتا ہے۔ virtual audio routing، بیک وقت دو طرفہ meeting capture اور حقیقی remote-participant جانچ ابھی باقی ہے۔
+
+سرور صرف `127.0.0.1:8765` پر سنتا ہے۔ API key backend میں رہتی ہے؛ مقامی control token، Host/Origin checks، restricted static routes، CSP، transcript bounds، explicit Start اور browser disconnect کے 30s بعد stop شامل ہیں۔ Stop دبائیں؛ صرف window بند ہونے پر منحصر نہ رہیں۔ `.env`، audio، browser test artifacts اور screenshots Git سے خارج ہیں۔ Browser میں دکھنے والا عارضی app token Gemini API key نہیں۔
+
+تصدیق: `& '.\.venv\Scripts\python.exe' -X utf8 -m unittest discover -v`۔ Browser QA: server کھول کر `playwright-cli -s=translator open http://127.0.0.1:8765`، پھر `playwright-cli -s=translator run-code --filename=qa/browser-check.js`۔ QA session routes کو simulate کرتا ہے؛ حقیقی mic/API نہیں کھلتے۔ موجودہ dependency versions وہی ہیں؛ کوئی نئی dependency شامل نہیں کی گئی۔ Bluetooth refresh idle حالت میں PortAudio lifecycle دوبارہ initialize کرتا ہے؛ sounddevice upgrade پر اس کا smoke test ضروری ہے۔
+
 ذاتی Windows 11 مترجم کا مرحلہ وار پروجیکٹ۔ صرف اردو ↔ انگریزی؛ development setup اور مقامی مائیک/playback کا ٹیسٹ مکمل ہیں۔ مکمل meeting translator ابھی تیار نہیں۔ مکمل مراحل اور قبولیت کے معیار [PLAN.md](PLAN.md) میں ہیں۔
 
 اب مختصر جملوں کا دو طرفہ translation demo بھی دستیاب ہے: `Start-Translator-Demo.cmd`۔ [اردو ڈیمو ہدایات](DEMO_GUIDE_UR.md) پڑھیں۔ یہ مسلسل live translator یا Zoom integration نہیں۔ API key صرف local `.env` میں رکھیں؛ source میں نہیں۔ کوئی نئی Python dependency درکار نہیں؛ REST client standard library استعمال کرتا ہے۔

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="app-token" content="__APP_TOKEN__">
+  <title>Bilal · Voice Translator</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+ <div class="shell">
+  <aside class="sidebar">
+   <a class="brand" href="/" aria-label="Voice Translator home"><img src="/icon.svg" alt="" width="38" height="38"><span dir="ltr">Voice<span class="brand-light">Translator</span><small>YOUR PERSONAL INTERPRETER</small></span></a>
+   <div class="workspace"><span class="avatar">B</span><div><strong>Bilal’s workspace</strong><small>Personal · Windows</small></div></div>
+   <nav aria-label="حصے">
+    <button class="nav-button selected" data-view="translator" aria-current="page"><span aria-hidden="true">◉</span> لائیو ترجمہ <small>Live</small></button>
+    <button class="nav-button" data-view="guide"><span aria-hidden="true">☷</span> استعمال کا طریقہ <small>Guide</small></button>
+   </nav>
+   <div class="sidebar-bottom"><div class="local-badge"><span class="dot"></span> آپ کے لیپ ٹاپ پر</div><p>آڈیو اور متن کی مقامی ہسٹری محفوظ نہیں ہوتی۔ ترجمے کے لیے Google سے رابطہ ہوتا ہے۔</p><span class="version" dir="ltr">PERSONAL MVP · v0.7</span></div>
+  </aside>
+  <main>
+   <header class="topbar"><span class="breadcrumb">آپ کی گفتگو <span>/</span> <strong id="page-name">لائیو ترجمہ</strong></span><span class="provider" id="provider"><span class="dot"></span> Gemini · جانچ ہو رہی ہے</span></header>
+   <section id="translator-view">
+    <div class="page-heading"><div><span class="eyebrow" dir="ltr">SPEAK COMFORTABLY. STAY CONNECTED.</span><h1>آپ کی بات، دوسری زبان میں۔</h1><p>اردو میں بات کریں، انگریزی میں سنیں۔ یا انگریزی سے اردو منتخب کریں۔</p></div><span class="headphone-chip">ایئربڈز کے ساتھ استعمال کریں</span></div>
+    <div class="meeting-note"><span class="note-icon" aria-hidden="true">i</span><div><strong>فی الحال مقامی آواز اور ترجمے کا ٹیسٹ</strong><span>Zoom / Google Meet میں آواز بھیجنے کی روٹنگ ابھی باقی ہے۔ اس ونڈو سے آواز خودبخود کلائنٹ کو نہیں جاتی۔</span></div></div>
+    <section class="setup-card" aria-labelledby="setup-heading">
+     <div class="section-heading"><div><span class="step">01</span><h2 id="setup-heading">گفتگو کی ترتیب</h2></div><button id="refresh" class="text-button" type="button">↻ ڈیوائسز تازہ کریں</button></div>
+     <div class="device-grid">
+      <div class="field"><label for="mic">آپ کا مائیک <span>Microphone</span></label><select id="mic" aria-describedby="mic-hint"></select><small id="mic-hint">لیپ ٹاپ کا Realtek مائیک بھی استعمال کر سکتے ہیں۔</small></div>
+      <div class="field"><label for="output">سننے کی ڈیوائس <span>Headphones</span></label><select id="output" aria-describedby="output-hint"></select><small id="output-hint">AirPods نہ ملیں تو کنیکٹ کرکے فہرست تازہ کریں۔</small></div>
+     </div>
+     <div class="language-row"><div class="field language-field"><label for="direction">ترجمے کی سمت</label><select id="direction"><option value="en">اردو → English</option><option value="ur">English → اردو</option></select></div><div class="voice-info"><span class="voice-symbol" aria-hidden="true">≋</span><div><strong>ایک مستقل مردانہ آواز</strong><small dir="ltr">Gemini · Puck · Natural conversation</small></div></div><button id="test-voice" class="secondary-button" type="button">▷ آواز سن کر دیکھیں</button></div>
+    </section>
+    <section class="conversation" aria-labelledby="conversation-heading">
+     <div class="section-heading"><div><span class="step">02</span><h2 id="conversation-heading">آپ کی گفتگو</h2><span id="live-badge" class="status-pill">مائیک بند ہے</span></div><button id="clear" class="text-button" type="button">متن صاف کریں</button></div>
+     <div class="transcript-grid">
+      <article class="transcript-panel"><div class="transcript-title"><h3>اصل بات</h3><span id="source-label" dir="ltr">URDU</span></div><div id="original" class="transcript-text source-text" role="log" aria-label="اصل بات"><p class="empty">یہاں آپ کی کہی ہوئی بات آئے گی۔<small>شروع کرنے کے لیے نیچے سبز بٹن دبائیں۔</small></p></div><div class="panel-footer"><span class="tiny-dot"></span> صرف آپ کی اسکرین پر</div></article>
+      <article class="transcript-panel translated"><div class="transcript-title"><h3>ترجمہ</h3><span id="target-label" dir="ltr">ENGLISH</span></div><div id="translation" class="transcript-text" dir="ltr" role="log" aria-label="ترجمہ"><p class="empty" dir="rtl">آپ کی بات کا ترجمہ یہاں نظر آئے گا۔<small>الفاظ سننے کے ساتھ متن بھی پڑھ سکیں گے۔</small></p></div><div class="panel-footer"><span class="tiny-dot green"></span> Gemini کی مردانہ آواز</div></article>
+     </div>
+    </section>
+    <div id="error" class="error-banner" role="alert" hidden></div>
+    <section class="control-bar" aria-label="ترجمے کے کنٹرول">
+     <div class="session-info"><span class="session-light" id="session-light"></span><div><strong id="session-title">بات شروع کرنے کے لیے تیار</strong><small id="session-status" role="status">مائیک بند ہے۔ کوئی آواز ریکارڈ نہیں ہو رہی۔</small></div></div>
+     <div class="controls"><label class="audio-toggle"><input id="hear" type="checkbox" checked><span>ترجمے کی آواز</span></label><button id="mute" class="secondary-button" type="button" aria-pressed="false" disabled>مائیک خاموش</button><button id="start" class="primary-button" type="button"><span aria-hidden="true">▶</span> شروع کریں · Start</button><button id="stop" class="stop-button" type="button" hidden>■ روکیں · Stop</button></div>
+    </section>
+    <footer class="page-footer"><span>انٹرنیٹ ضروری ہے · مفت API کی حد لاگو ہوتی ہے</span><span id="latency">آواز اور ترجمہ مستقل محفوظ نہیں ہوتے</span></footer>
+   </section>
+   <section id="guide-view" hidden>
+    <div class="page-heading"><div><span class="eyebrow" dir="ltr">A SIMPLE START</span><h1>صرف تین آسان قدم۔</h1><p>اسی لیپ ٹاپ پر ترجمہ آزمانے کا طریقہ۔</p></div></div>
+    <article class="guide-card"><span class="step">1</span><h2>ایئربڈز کنیکٹ کریں</h2><p>Windows سے اپنے AirPads / AirPods کنیکٹ کریں۔ پھر لائیو ترجمے میں «ڈیوائسز تازہ کریں» دبائیں۔ سننے کی ڈیوائس میں Headphones منتخب ہونا چاہیے۔</p></article>
+    <article class="guide-card"><span class="step">2</span><h2>سمت منتخب کرکے Start دبائیں</h2><p>اردو → English منتخب کریں اور کہیں: «میرا نام بلال ہے۔ آپ کے پروجیکٹ پر سات دن لگیں گے اور قیمت پانچ سو ڈالر ہوگی۔» ترجمہ چھوٹے معنوی حصوں میں سنائی دے گا؛ کچھ تاخیر لازمی ہے۔</p></article>
+    <article class="guide-card"><span class="step">3</span><h2>آواز سنیں، متن چیک کریں</h2><p>آواز صاف ہے؟ قیمت، دن اور نام درست آئے؟ دوسری سمت آزمانے کے لیے Stop دبائیں، English → اردو منتخب کریں، پھر Start دبائیں۔ ختم کرنے پر Stop ضرور دبائیں۔</p></article>
+    <details class="guide-card"><summary>آواز نہ آئے یا HTTP 429 ہو تو؟</summary><p>آواز کا خانہ فعال اور Headphones منتخب رکھیں۔ HTTP 429 کا مطلب API کی رفتار یا استعمال کی حد ہے؛ اسکرین پر بتایا گیا انتظار کریں۔ بار بار Start نہ دبائیں۔ paid سروس خودکار فعال نہیں ہوتی۔</p></details>
+    <details class="guide-card"><summary>کیا یہ اب Zoom یا Google Meet کے لیے مکمل تیار ہے؟</summary><p>ابھی نہیں۔ اس ورژن میں منتخب input سے ترجمہ اور منتخب headphones میں آواز چلتی ہے۔ کلائنٹ کی آواز کی capture، الگ virtual microphone، دو طرفہ روٹنگ اور حقیقی میٹنگ کی جانچ اگلا مرحلہ ہیں۔ صرف سمت بدلنے سے میٹنگ کا آڈیو خودبخود منتخب نہیں ہوتا۔</p></details>
+    <details class="guide-card"><summary>پرائیویسی اور API key</summary><p>API key اسی project کی .env فائل میں رہتی ہے؛ اس ونڈو سے نظر نہیں آتی۔ Start پر منتخب مائیک کی آواز Google کو ترجمے کے لیے بھیجی جاتی ہے، اور ترجمے کا متن Google کو آواز بنانے کے لیے۔ مقامی ہسٹری یا آڈیو فائل محفوظ نہیں ہوتی۔ Google کی اپنی ڈیٹا پالیسی الگ لاگو ہوتی ہے۔ قدرتی آواز، ترجمے کی مکمل صحت یا ہر غلطی معلوم ہونے کی ضمانت نہیں۔</p></details>
+   </section>
+   <div class="app-bottom"><span dir="ltr">BILAL · VOICE TRANSLATOR</span><button id="exit" class="text-button" type="button">ایپ بند کریں</button></div>
+  </main>
+ </div>
+</body>
+</html>

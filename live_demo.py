@@ -37,6 +37,8 @@ class LiveDemo(AudioTest):
         self.direction.current(0)
         self.direction.pack(fill="x", pady=6)
         self.hear = tk.BooleanVar(value=False)
+        self.audio_state = tk.StringVar(value="ترجمے کی آواز بند ہے")
+        ttk.Label(lower, textvariable=self.audio_state, foreground="#155b85", wraplength=850).pack(anchor="w")
         ttk.Checkbutton(lower, text="ترجمے کی آواز سنیں — صرف Headphones/Headset منتخب کرکے", variable=self.hear,
                         command=self.change_audio).pack(anchor="w", pady=5)
         self.muted = tk.BooleanVar(value=False)
@@ -50,7 +52,7 @@ class LiveDemo(AudioTest):
         self.translation = tk.Text(lower, height=4, wrap="word", font=("Segoe UI", 12), state="disabled")
         self.translation.pack(fill="both", expand=True)
         self.notice = tk.StringVar(value="یہ live experiment ہے؛ ابھی Zoom/Meet کی روٹنگ اور ہر غلطی روکنے کی تصدیق نہیں ہوئی۔")
-        ttk.Label(lower, textvariable=self.notice, foreground="#a13c00", wraplength=850).pack(pady=5)
+        ttk.Label(panel, textvariable=self.notice, foreground="#a13c00", wraplength=850).pack(pady=3)
         ttk.Label(lower, text="Voice locked: Puck (male) — لائیو متن سے ایک ہی آواز بنتی ہے؛ کچھ اضافی تاخیر ممکن ہے۔", wraplength=850).pack()
         self.status.set("تیار ہے۔ پہلے headphones منتخب کریں، یا صرف متن کے لیے آواز کا خانہ بند رکھیں۔")
         self.poll_timer = root.after(100, self.poll)
@@ -78,6 +80,7 @@ class LiveDemo(AudioTest):
             self.notice.set("اسپیکر منتخب ہیں۔ آواز دوبارہ مائیک میں جانے سے بچانے کے لیے صرف متن چلے گا۔ پہلے headphones منتخب کریں۔")
         if self.session:
             self.session.mute_audio(not self.hear.get())
+        self.audio_state.set("ترجمے کی آواز فعال ہے — " + self.speaker.get() if self.hear.get() else "ترجمے کی آواز بند ہے — صرف متن دکھایا جائے گا")
 
     def change_mic(self):
         if self.session:
@@ -124,6 +127,8 @@ class LiveDemo(AudioTest):
                         widget.config(state="disabled")
                     elif kind in ("error", "latency"):
                         self.notice.set(message)
+                        if kind == "error":
+                            self.audio_state.set(message)
                     elif kind == "status" and self.mode == "live":
                         self.status.set(message)
                     elif kind == "stopped":
@@ -145,7 +150,7 @@ class LiveDemo(AudioTest):
 def main():
     root = tk.Tk()
     app = LiveDemo(root)
-    if "--hear" in sys.argv and app.headphones_selected():
+    if app.headphones_selected():
         app.hear.set(True)
         app.change_audio()
     root.lift()

@@ -72,6 +72,7 @@ class Resampler:
         self.history = np.zeros(100, dtype="float32")
         self.seen = 0
         self.next_position = 0.0
+        self.previous_filtered = 0.0
 
     def process(self, samples):
         data = np.asarray(samples, dtype="float32").reshape(-1)
@@ -82,7 +83,12 @@ class Resampler:
         self.history = combined[-100:]
         end = self.seen + len(data)
         positions = np.arange(self.next_position, end, self.source_rate / self.target_rate)
-        result = np.interp(positions - self.seen, np.arange(len(filtered)), filtered)
+        # One source-sample delay makes interpolation causal: the last fractional
+        # sample of a network chunk must not repeat its endpoint while waiting
+        # for the next chunk. Preserve that endpoint across calls.
+        result = np.interp(positions - self.seen - 1, np.arange(-1, len(filtered)),
+                           np.concatenate(([self.previous_filtered], filtered)))
+        self.previous_filtered = float(filtered[-1])
         self.next_position += len(positions) * self.source_rate / self.target_rate
         self.seen = end
         return result.astype("float32")
@@ -358,6 +364,7 @@ class LiveSession:
             while expected in pending:
                 _, _, chunks, created = pending.pop(expected)
                 expected += 1
+                converter = None
                 while not self.stop_event.is_set() and epoch == self.voice_epoch and not self.audio_muted:
                     if time.monotonic() - created > 20:
                         raise ServiceError("ترجمے کی آواز بہت پرانی ہو گئی؛ پرانی بات سنانے کے بجائے سیشن روک دیا۔")
@@ -370,9 +377,9 @@ class LiveSession:
                         break
                     if kind == "error":
                         raise ServiceError(audio)
-                    audio = audio[:, 0] * .8
-                    count = max(1, round(len(audio) * self.output_rate / rate))
-                    samples = np.interp(np.arange(count) * rate / self.output_rate, np.arange(len(audio)), audio).astype("float32")
+                    if converter is None:
+                        converter = Resampler(rate, self.output_rate)
+                    samples = converter.process(audio[:, 0] * .8)
                     block = round(self.output_rate * .1)
                     for position in range(0, len(samples), block):
                         while self.playback.frames > self.output_rate:

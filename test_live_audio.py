@@ -74,6 +74,28 @@ class StreamingTests(unittest.TestCase):
         self.assertEqual(len(blocks), 16000)
         np.testing.assert_allclose(whole, blocks, atol=1e-5)
 
+    def test_tts_playback_preserves_waveform_across_network_chunks(self):
+        session = self.make_session()
+        source = (.15 * np.sin(2 * np.pi * 730 * np.arange(4800) / 24000)).astype('float32')
+        rendered = []
+        async def scenario():
+            import queue
+            chunks = queue.Queue()
+            for part in np.array_split(source, 17):
+                chunks.put(('audio', part.reshape(-1, 1), 24000))
+            chunks.put(('end', None, None))
+            session.speech_ready = asyncio.Queue()
+            await session.speech_ready.put((0, 0, chunks, time.monotonic()))
+            worker = asyncio.create_task(session.render())
+            await asyncio.sleep(.05)
+            session.stop()
+            worker.cancel()
+            await asyncio.gather(worker, return_exceptions=True)
+        with patch.object(session.playback, 'append', side_effect=lambda data: rendered.append(data.copy())):
+            asyncio.run(scenario())
+        expected = Resampler(24000, 48000).process(source * .8)
+        np.testing.assert_allclose(np.concatenate(rendered), expected, atol=1e-5)
+
     def test_stop_buffer_clears_all_old_audio(self):
         buffer = PlaybackBuffer(24000)
         buffer.append(np.ones(2400, dtype="float32"))

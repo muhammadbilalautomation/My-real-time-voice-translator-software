@@ -18,7 +18,10 @@ BASE = "https://generativelanguage.googleapis.com/v1beta/"
 TEXT_MODEL = "gemini-3.5-flash-lite"
 TTS_MODEL = "gemini-3.8-flash-lite-tts"
 DEFAULT_VOICE = "puck"  # Male, upbeat conversational preset in Google's voice library.
-VOICE_STYLE = "One consistent young-adult male voice, light-to-medium pitch, natural relaxed conversational delivery at normal pace. Not deep or booming. No speaker changes or theatrical delivery. Recite only the exact supplied text."
+VOICE_STYLE = ("A single young-adult male speaking naturally to a colleague. Light, clear, "
+               "comfortable mid-register voice; relaxed everyday conversation. Smooth connected "
+               "phrasing, gentle natural intonation, normal pace and brief pauses at punctuation. "
+               "Keep the same voice and delivery throughout. Read the supplied words exactly.")
 VOICE_PROFILE = Path(__file__).with_name(".voice-profile.json")
 
 # Common spoken numbers are normalized before comparing with written digits.
@@ -296,6 +299,18 @@ def speak_stream(text, voice=DEFAULT_VOICE):
                         produced = True
                         yield audio.reshape(-1, 1), 24000
     except urllib.error.HTTPError as error:
+        if error.code == 429:
+            try:
+                detail = json.load(error).get("error", {}).get("message", "").lower()
+            except (ValueError, AttributeError, TypeError):
+                detail = ""
+            try:
+                wait = max(0, int(error.headers.get("Retry-After", "0")))
+            except (ValueError, TypeError, AttributeError):
+                wait = 0
+            limit = "روزانہ" if "per day" in detail or "daily" in detail else "درخواستوں کی"
+            hint = f" تقریباً {(wait + 3599) // 3600} گھنٹے بعد دوبارہ آزمائیں۔" if wait >= 3600 else " کچھ دیر بعد دوبارہ آزمائیں۔"
+            raise ServiceError(f"آواز بنانے کی {limit} حد پوری ہو گئی ہے (HTTP 429)۔" + hint + " کوئی paid سروس فعال نہیں کی گئی۔") from None
         raise ServiceError(f"مستقل آواز کی درخواست HTTP {error.code} پر رک گئی؛ quota/اجازت چیک کریں۔ paid fallback بند ہے۔") from None
     except (urllib.error.URLError, TimeoutError, OSError):
         raise ServiceError("مستقل آواز کا انٹرنیٹ کنکشن رک گیا؛ پرانا آڈیو دوبارہ نہیں چلایا جائے گا۔") from None
